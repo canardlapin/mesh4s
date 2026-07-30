@@ -395,15 +395,7 @@ private final class PackedTopology[V, E, F, H](
       domain: FiniteDomain[S],
       ordinal: Int
   ): Index[S] =
-    domain
-      .index(ordinal)
-      .fold(
-        error =>
-          throw new IllegalStateException(
-            s"validated topology contained ${error.message}"
-          ),
-        identity
-      )
+    domain.indexAtValidatedOrdinal(ordinal)
 
   private def nextOrdinal(halfedge: Int): Int =
     val start = halfedge - halfedge % 3
