@@ -3,7 +3,6 @@ package mesh4s.geometry
 import java.lang.management.ManagementFactory
 
 import locus4s.FiniteDomain
-import locus4s.Index
 import spatial4s.D3
 import spatial4s.Frame
 
@@ -39,7 +38,7 @@ final class PointFieldAllocationCourtSuite extends munit.FunSuite:
       field: PointField[S, D3, Frame[D3]]
   ): (Double, Long) =
     var checksum = 0.0
-    val consume: (Index[S], Double, Double, Double) => Unit =
+    val consume: D3PointConsumer[S] =
       (_, x, y, z) => checksum += x + y + z
 
     var warmup = 0

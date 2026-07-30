@@ -25,6 +25,14 @@ enum PointFieldError derives CanEqual:
       case NonFiniteCoordinate(vertex, axis, value) =>
         s"vertex $vertex axis $axis has non-finite coordinate $value"
 
+/** Primitive callback for allocation-free traversal of packed D2 points. */
+trait D2PointConsumer[S]:
+  def apply(index: Index[S], x: Double, y: Double): Unit
+
+/** Primitive callback for allocation-free traversal of packed D3 points. */
+trait D3PointConsumer[S]:
+  def apply(index: Index[S], x: Double, y: Double, z: Double): Unit
+
 /** Frame-owned packed coordinates over one exact locus4s domain. */
 sealed abstract class PointField[
     S,
@@ -60,7 +68,7 @@ sealed abstract class PointField[
       )
 
   final def foreachD2(
-      f: (Index[S], Double, Double) => Unit
+      f: D2PointConsumer[S]
   )(using D =:= D2): Unit =
     var ordinal = 0
     while ordinal < space.size do
@@ -73,7 +81,7 @@ sealed abstract class PointField[
       ordinal += 1
 
   final def foreachD3(
-      f: (Index[S], Double, Double, Double) => Unit
+      f: D3PointConsumer[S]
   )(using D =:= D3): Unit =
     var ordinal = 0
     while ordinal < space.size do
