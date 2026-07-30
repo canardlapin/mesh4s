@@ -11,7 +11,7 @@ val munitCheckV = "1.3.0"
 val scalaCheckV = "1.19.0"
 
 lazy val locus4sRevision =
-  "af063d7fcf2d0d48aed5474c9c9a41376e18531f"
+  "4aa95b569b6b6c62ea7c6d52897ad77d1472051a"
 lazy val graph4sRevision =
   "ea5d2d762f85f5a0f97ee188deb5fac0ef2bcbaf"
 lazy val spatial4sRevision =
