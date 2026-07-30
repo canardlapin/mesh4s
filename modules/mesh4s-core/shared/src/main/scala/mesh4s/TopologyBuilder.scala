@@ -1,6 +1,7 @@
 package mesh4s
 
 import locus4s.FiniteDomain
+import locus4s.Index
 import locus4s.SomeFiniteDomain
 
 import scala.collection.mutable
@@ -19,13 +20,27 @@ private[mesh4s] object TopologyBuilder:
       target: Int
   )
 
+  private final case class CompiledStorage(
+      edgeCount: Int,
+      faceVertices: Array[Int],
+      opposites: Array[Int],
+      edgeOfHalfedge: Array[Int],
+      halfedgeOfEdge: Array[Int],
+      incidentFaces: Array[Array[Int]],
+      neighbors: Array[Array[Int]]
+  )
+
   private final class AuditCollector(limit: Int):
     private val stored = Vector.newBuilder[TopologyIssue]
+    private val completed = mutable.ArrayBuffer.empty[AuditStage]
     private var total = 0L
 
     def add(issue: TopologyIssue): Unit =
       if total < limit.toLong then stored += issue
       total += 1L
+
+    def complete(stage: AuditStage): Unit =
+      completed.addOne(stage)
 
     def result(): Option[TopologyAudit] =
       if total == 0L then None
@@ -34,7 +49,8 @@ private[mesh4s] object TopologyBuilder:
           TopologyAudit(
             stored.result(),
             total,
-            total > limit.toLong
+            total > limit.toLong,
+            completed.toVector
           )
         )
 
@@ -45,6 +61,20 @@ private[mesh4s] object TopologyBuilder:
     audit(table, issueLimit, checkOrientation = true) match
       case Some(report) => Left(report)
       case None         => Right(compile(table))
+
+  def buildOn[V](
+      vertices: FiniteDomain[V],
+      faces: IterableOnce[Triangle[Index[V]]],
+      issueLimit: Int
+  ): Either[TopologyAudit, TriangleTopology { type Vertex = V }] =
+    val table =
+      TriangleTable(
+        vertices.size,
+        faces.iterator.map(_.map(_.ordinal)).toVector
+      )
+    audit(table, issueLimit, checkOrientation = true) match
+      case Some(report) => Left(report)
+      case None         => Right(compileOn(table, vertices))
 
   def audit(
       table: TriangleTable,
@@ -64,8 +94,11 @@ private[mesh4s] object TopologyBuilder:
           halfedgeCount
         )
       )
+    collector.complete(AuditStage.Addressability)
 
     val validFace = Array.fill(faceCount)(true)
+    var allLocalFacesValid = true
+    var duplicateFound = false
     val usedVertices =
       if vertexCount >= 0 then Array.fill(vertexCount)(false)
       else Array.emptyBooleanArray
@@ -81,6 +114,7 @@ private[mesh4s] object TopologyBuilder:
             TopologyIssue.VertexOutOfBounds(face, corner, vertex)
           )
           validFace(face) = false
+          allLocalFacesValid = false
         else usedVertices(vertex) = true
       }
 
@@ -90,7 +124,9 @@ private[mesh4s] object TopologyBuilder:
       repeated.toVector.sorted.foreach(vertex =>
         collector.add(TopologyIssue.RepeatedVertex(face, vertex))
       )
-      if repeated.nonEmpty then validFace(face) = false
+      if repeated.nonEmpty then
+        validFace(face) = false
+        allLocalFacesValid = false
 
       if validFace(face) then
         val sorted = values.sorted
@@ -99,6 +135,7 @@ private[mesh4s] object TopologyBuilder:
           case Some(first) =>
             collector.add(TopologyIssue.DuplicateFace(first, face))
             validFace(face) = false
+            duplicateFound = true
           case None =>
             firstFaceForTriangle.update(key, face)
 
@@ -113,9 +150,13 @@ private[mesh4s] object TopologyBuilder:
             .addOne(EdgeUse(face, origin, target))
           local += 1
     }
+    collector.complete(AuditStage.LocalFaces)
+    if allLocalFacesValid then collector.complete(AuditStage.DuplicateFaces)
 
+    var edgeManifold = true
     edgeUses.foreach { (edge, uses) =>
       if uses.length > 2 then
+        edgeManifold = false
         collector.add(
           TopologyIssue.NonManifoldEdge(
             edge.first,
@@ -136,12 +177,16 @@ private[mesh4s] object TopologyBuilder:
             )
           )
     }
+    if allLocalFacesValid && !duplicateFound then
+      collector.complete(AuditStage.EdgeIncidence)
+      if edgeManifold && checkOrientation then collector.complete(AuditStage.Orientation)
 
     if vertexCount >= 0 then
       var vertex = 0
       while vertex < vertexCount do
         if !usedVertices(vertex) then collector.add(TopologyIssue.UnusedVertex(vertex))
         vertex += 1
+      if allLocalFacesValid then collector.complete(AuditStage.VertexUsage)
 
       auditVertexLinks(
         table,
@@ -149,6 +194,8 @@ private[mesh4s] object TopologyBuilder:
         vertexCount,
         collector
       )
+      if allLocalFacesValid && !duplicateFound && edgeManifold then
+        collector.complete(AuditStage.VertexLinks)
 
     collector.result()
 
@@ -222,6 +269,38 @@ private[mesh4s] object TopologyBuilder:
     components
 
   private def compile(table: TriangleTable): TriangleTopology =
+    val storage = compileStorage(table)
+    val vertexDomain =
+      domain("mesh vertices", table.vertexCount)
+    val edgeDomain =
+      domain("mesh edges", storage.edgeCount)
+    val faceDomain =
+      domain("mesh faces", table.faces.length)
+    val halfedgeDomain =
+      domain("mesh halfedges", storage.faceVertices.length)
+
+    pack(
+      vertexDomain,
+      edgeDomain,
+      faceDomain,
+      halfedgeDomain,
+      storage
+    )
+
+  private def compileOn[V](
+      table: TriangleTable,
+      vertices: FiniteDomain[V]
+  ): TriangleTopology { type Vertex = V } =
+    val storage = compileStorage(table)
+    val edgeDomain =
+      domain("mesh edges", storage.edgeCount)
+    val faceDomain =
+      domain("mesh faces", table.faces.length)
+    val halfedgeDomain =
+      domain("mesh halfedges", storage.faceVertices.length)
+    packOn(vertices, edgeDomain, faceDomain, halfedgeDomain, storage)
+
+  private def compileStorage(table: TriangleTable): CompiledStorage =
     val faceVertices = table.faces.iterator.flatMap(_.toVector).toArray
     val halfedgeCount = faceVertices.length
     val opposites =
@@ -268,20 +347,8 @@ private[mesh4s] object TopologyBuilder:
         local += 1
     }
 
-    val vertexDomain =
-      domain("mesh vertices", table.vertexCount)
-    val edgeDomain =
-      domain("mesh edges", edgeForKey.size)
-    val faceDomain =
-      domain("mesh faces", table.faces.length)
-    val halfedgeDomain =
-      domain("mesh halfedges", halfedgeCount)
-
-    pack(
-      vertexDomain,
-      edgeDomain,
-      faceDomain,
-      halfedgeDomain,
+    CompiledStorage(
+      edgeForKey.size,
       faceVertices,
       opposites,
       edgeOfHalfedge,
@@ -306,12 +373,7 @@ private[mesh4s] object TopologyBuilder:
       edgeDomain: SomeFiniteDomain,
       faceDomain: SomeFiniteDomain,
       halfedgeDomain: SomeFiniteDomain,
-      faceVertices: Array[Int],
-      opposites: Array[Int],
-      edgeOfHalfedge: Array[Int],
-      halfedgeOfEdge: Array[Int],
-      incidentFaces: Array[Array[Int]],
-      neighbors: Array[Array[Int]]
+      storage: CompiledStorage
   ): TriangleTopology =
     new PackedTopology[
       vertexDomain.S,
@@ -323,12 +385,37 @@ private[mesh4s] object TopologyBuilder:
       edgeDomain.value,
       faceDomain.value,
       halfedgeDomain.value,
-      faceVertices,
-      opposites,
-      edgeOfHalfedge,
-      halfedgeOfEdge,
-      incidentFaces,
-      neighbors
+      storage.faceVertices,
+      storage.opposites,
+      storage.edgeOfHalfedge,
+      storage.halfedgeOfEdge,
+      storage.incidentFaces,
+      storage.neighbors
+    )
+
+  private def packOn[V](
+      vertices: FiniteDomain[V],
+      edgeDomain: SomeFiniteDomain,
+      faceDomain: SomeFiniteDomain,
+      halfedgeDomain: SomeFiniteDomain,
+      storage: CompiledStorage
+  ): TriangleTopology { type Vertex = V } =
+    new PackedTopology[
+      V,
+      edgeDomain.S,
+      faceDomain.S,
+      halfedgeDomain.S
+    ](
+      vertices,
+      edgeDomain.value,
+      faceDomain.value,
+      halfedgeDomain.value,
+      storage.faceVertices,
+      storage.opposites,
+      storage.edgeOfHalfedge,
+      storage.halfedgeOfEdge,
+      storage.incidentFaces,
+      storage.neighbors
     )
 
   private def nextOrdinal(halfedge: Int): Int =

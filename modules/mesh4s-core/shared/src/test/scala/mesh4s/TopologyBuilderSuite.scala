@@ -25,6 +25,28 @@ class TopologyBuilderSuite extends munit.FunSuite:
     assertEquals(topology.previous(h0).ordinal, 2)
     assertEquals(topology.opposite(h0), None)
 
+  test("typed construction preserves an existing vertex domain"):
+    val packed =
+      locus4s.FiniteDomain
+        .ephemeral("existing surface vertices", 3)
+        .fold(error => fail(error.message), identity)
+    val vertices = packed.value
+    val v0 = index(vertices, 0)
+    val v1 = index(vertices, 1)
+    val v2 = index(vertices, 2)
+    val topology =
+      right(
+        TriangleTopology
+          .on(vertices)
+          .fromOrientedFaces(Vector(Triangle(v0, v1, v2)))
+      )
+
+    assert(topology.vertices eq vertices)
+    assertEquals(
+      topology.verticesOf(index(topology.faces, 0)),
+      Triangle(v0, v1, v2)
+    )
+
   test("two oriented triangles pair one shared edge deterministically"):
     val topology = square()
     assertEquals(topology.edges.size, 5)

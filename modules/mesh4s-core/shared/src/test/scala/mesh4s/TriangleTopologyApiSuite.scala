@@ -41,3 +41,20 @@ def mix(left: TriangleTopology, right: TriangleTopology)(
     )
 
     assert(errors.nonEmpty)
+
+  test("an image-grid-like voxel domain cannot be used as mesh vertices"):
+    val errors = typeCheckErrors(
+      """import locus4s.Index
+import mesh4s.TriangleTopology
+
+trait ImageGrid:
+  type Voxel
+
+def misuse(topology: TriangleTopology, grid: ImageGrid)(
+    voxel: Index[grid.Voxel]
+) =
+  topology.neighbors(voxel)
+"""
+    )
+
+    assert(errors.nonEmpty)

@@ -3,6 +3,15 @@ package mesh4s
 enum CellKind derives CanEqual:
   case Vertex, Edge, Face, Halfedge
 
+enum AuditStage derives CanEqual:
+  case Addressability
+  case LocalFaces
+  case DuplicateFaces
+  case EdgeIncidence
+  case Orientation
+  case VertexUsage
+  case VertexLinks
+
 enum TopologyIssue derives CanEqual:
   case NegativeVertexCount(requested: Int)
   case VertexOutOfBounds(face: Int, corner: Int, vertexOrdinal: Int)
@@ -51,7 +60,8 @@ enum TopologyIssue derives CanEqual:
 final case class TopologyAudit(
     issues: Vector[TopologyIssue],
     totalIssueCount: Long,
-    truncated: Boolean
+    truncated: Boolean,
+    completedStages: Vector[AuditStage]
 ):
   require(issues.nonEmpty, "a failed topology audit must contain an issue")
 

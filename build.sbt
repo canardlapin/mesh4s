@@ -8,6 +8,7 @@ import scalajscrossproject.ScalaJSCrossPlugin.autoImport.*
 val Scala3 = "3.7.4"
 val munitV = "1.3.4"
 val munitCheckV = "1.3.0"
+val scalaCheckV = "1.19.0"
 
 lazy val locus4sRevision =
   "af063d7fcf2d0d48aed5474c9c9a41376e18531f"
@@ -113,6 +114,10 @@ lazy val mesh4sReference =
 lazy val mesh4sLaws =
   meshProject("mesh4s-laws")
     .dependsOn(mesh4sCore, mesh4sGeometry, mesh4sReference)
+    .settings(
+      libraryDependencies +=
+        "org.scalacheck" %%% "scalacheck" % scalaCheckV
+    )
 
 lazy val mesh4sGraph4s =
   meshProject("mesh4s-graph4s")

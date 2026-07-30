@@ -11,6 +11,17 @@ Public cell ordering is part of the persistence contract:
 
 Hash-map iteration must never determine a public ordinal.
 
+The current in-memory compiler follows these rules directly. A bounded
+`TopologyAudit` records concrete witnesses, the total issue count, truncation,
+and which validation stages completed. Invalid local rows therefore cannot
+produce a report that falsely claims edge, orientation, or vertex-link
+validation completed.
+
+Convenience values such as `Region`, `Cycle`, `Path`, and component vectors
+materialize collections. `foreachNeighbor`, `foreachIncidentFace`,
+`foreachFaceHalfedge`, and `foreachBoundaryHalfedge` are the primitive traversal
+boundary.
+
 A versioned topology record contains one caller-supplied topology key, the
 vertex-domain record, ordered face vertex ordinals, the indexing-scheme
 version, and a connectivity fingerprint. Face, edge, and halfedge identities
