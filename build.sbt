@@ -14,6 +14,8 @@ lazy val locus4sRevision =
   "af063d7fcf2d0d48aed5474c9c9a41376e18531f"
 lazy val graph4sRevision =
   "ea5d2d762f85f5a0f97ee188deb5fac0ef2bcbaf"
+lazy val spatial4sRevision =
+  "1b98abb873543f90a1e532e1a67f39e16c1ba09d"
 
 def sourceBuild(
     property: String,
@@ -45,6 +47,15 @@ lazy val locus4sCoreJVM = ProjectRef(locus4sBuild, "locus4s-coreJVM")
 lazy val locus4sCoreJS = ProjectRef(locus4sBuild, "locus4s-coreJS")
 lazy val locus4sDataJVM = ProjectRef(locus4sBuild, "locus4s-dataJVM")
 lazy val locus4sDataJS = ProjectRef(locus4sBuild, "locus4s-dataJS")
+
+lazy val spatial4sBuild =
+  sourceBuild(
+    "mesh4s.spatial4s.build",
+    "https://github.com/canardlapin/spatial4s.git",
+    spatial4sRevision
+  )
+lazy val spatial4sCoreJVM = ProjectRef(spatial4sBuild, "spatial4s-coreJVM")
+lazy val spatial4sCoreJS = ProjectRef(spatial4sBuild, "spatial4s-coreJS")
 
 lazy val graph4sBuild =
   sourceBuild(
@@ -106,6 +117,8 @@ lazy val mesh4sCore =
 lazy val mesh4sGeometry =
   meshProject("mesh4s-geometry")
     .dependsOn(mesh4sCore)
+    .jvmConfigure(_.dependsOn(spatial4sCoreJVM))
+    .jsConfigure(_.dependsOn(spatial4sCoreJS))
 
 lazy val mesh4sReference =
   meshProject("mesh4s-reference")
@@ -132,7 +145,7 @@ lazy val mesh4sGraph4s =
 lazy val docs =
   project
     .in(file("site"))
-    .dependsOn(mesh4sCore.jvm)
+    .dependsOn(mesh4sCore.jvm, mesh4sGeometry.jvm)
     .enablePlugins(TypelevelSitePlugin)
     .settings(
       name := "mesh4s-docs",
@@ -163,7 +176,14 @@ Global / dependencyPins := {
         graph4sRevision
       )
   )
-  log.info("spatial4s=pending PH1A immutable revision")
+  log.info(
+    "spatial4s=" +
+      sourceDescription(
+        "mesh4s.spatial4s.build",
+        "https://github.com/canardlapin/spatial4s.git",
+        spatial4sRevision
+      )
+  )
 }
 
 lazy val root =

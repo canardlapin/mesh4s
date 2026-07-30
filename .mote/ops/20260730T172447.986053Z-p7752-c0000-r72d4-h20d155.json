@@ -1,0 +1,1 @@
+{"actor":"codex-mesh4s","entity":"bd-01KYST0RKYRYP6N2MQS8HCF876","kind":"reserve_open","mode":"exclusive","op":"20260730T172447.986053Z-p7752-c0000-r72d4-h20d155","paths":["build.sbt","modules/mesh4s-geometry","modules/mesh4s-reference","modules/mesh4s-laws","docs"],"reservation_id":"rv-01KYT0XAQJAP7GY8G7NJ49XD90","ts":"2026-07-30T17:24:47.986053Z","ttl_s":10800,"v":1}
