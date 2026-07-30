@@ -32,6 +32,7 @@ Continue with:
 
 - [Topology and incidence](concepts/topology.md)
 - [Realizations and intrinsic metrics](concepts/realizations-and-metrics.md)
+- [Graph projections](concepts/graph-projections.md)
 - [Spatial coordinate frames](concepts/spatial-frames.md)
 - [Topology records and deterministic indexing](reference/topology-record-and-indexing.md)
 - [Build and compatibility policy](reference/build-and-compatibility.md)

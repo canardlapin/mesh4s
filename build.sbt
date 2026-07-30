@@ -126,7 +126,12 @@ lazy val mesh4sReference =
 
 lazy val mesh4sLaws =
   meshProject("mesh4s-laws")
-    .dependsOn(mesh4sCore, mesh4sGeometry, mesh4sReference)
+    .dependsOn(
+      mesh4sCore,
+      mesh4sGeometry,
+      mesh4sReference,
+      mesh4sGraph4s
+    )
     .settings(
       libraryDependencies +=
         "org.scalacheck" %%% "scalacheck" % scalaCheckV
@@ -145,7 +150,7 @@ lazy val mesh4sGraph4s =
 lazy val docs =
   project
     .in(file("site"))
-    .dependsOn(mesh4sCore.jvm, mesh4sGeometry.jvm)
+    .dependsOn(mesh4sCore.jvm, mesh4sGeometry.jvm, mesh4sGraph4s.jvm)
     .enablePlugins(TypelevelSitePlugin)
     .settings(
       name := "mesh4s-docs",
