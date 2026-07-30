@@ -76,6 +76,51 @@ private[mesh4s] object TopologyBuilder:
       case Some(report) => Left(report)
       case None         => Right(compileOn(table, vertices))
 
+  def buildPersistent[V, E, F, H](
+      record: TriangleTopologyRecord,
+      vertices: FiniteDomain[V],
+      edges: FiniteDomain[E],
+      faces: FiniteDomain[F],
+      halfedges: FiniteDomain[H]
+  ): Either[
+    TopologyAudit,
+    TriangleTopology {
+      type Vertex = V
+      type Edge = E
+      type Face = F
+      type Halfedge = H
+    }
+  ] =
+    val table = record.table
+    audit(
+      table,
+      TopologyAudit.DefaultIssueLimit,
+      checkOrientation = true
+    ) match
+      case Some(report) =>
+        Left(report)
+      case None =>
+        val storage = compileStorage(table)
+        if vertices.size != table.vertexCount ||
+          edges.size != storage.edgeCount ||
+          faces.size != table.faces.length ||
+          halfedges.size != storage.faceVertices.length
+        then
+          throw new IllegalStateException(
+            "validated topology record derived inconsistent cell-domain sizes"
+          )
+        else
+          Right(
+            packPersistent(
+              vertices,
+              edges,
+              faces,
+              halfedges,
+              storage,
+              record
+            )
+          )
+
   def audit(
       table: TriangleTable,
       issueLimit: Int,
@@ -416,6 +461,33 @@ private[mesh4s] object TopologyBuilder:
       storage.halfedgeOfEdge,
       storage.incidentFaces,
       storage.neighbors
+    )
+
+  private def packPersistent[V, E, F, H](
+      vertices: FiniteDomain[V],
+      edges: FiniteDomain[E],
+      faces: FiniteDomain[F],
+      halfedges: FiniteDomain[H],
+      storage: CompiledStorage,
+      record: TriangleTopologyRecord
+  ): TriangleTopology {
+    type Vertex = V
+    type Edge = E
+    type Face = F
+    type Halfedge = H
+  } =
+    new PackedTopology[V, E, F, H](
+      vertices,
+      edges,
+      faces,
+      halfedges,
+      storage.faceVertices,
+      storage.opposites,
+      storage.edgeOfHalfedge,
+      storage.halfedgeOfEdge,
+      storage.incidentFaces,
+      storage.neighbors,
+      Some(record)
     )
 
   private def nextOrdinal(halfedge: Int): Int =

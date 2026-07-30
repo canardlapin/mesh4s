@@ -42,6 +42,21 @@ def mix(left: TriangleTopology, right: TriangleTopology)(
 
     assert(errors.nonEmpty)
 
+  test("an exact alignment provides concise typed transport"):
+    val errors = typeCheckErrors(
+      """import mesh4s.TopologyAlignment
+import mesh4s.TriangleTopology
+
+def transport(left: TriangleTopology, right: TriangleTopology)(
+    alignment: TopologyAlignment[left.type, right.type],
+    vertex: left.VertexIndex
+): right.VertexIndex =
+  alignment.vertexToRight(vertex)
+"""
+    )
+
+    assertEquals(errors, Nil)
+
   test("an image-grid-like voxel domain cannot be used as mesh vertices"):
     val errors = typeCheckErrors(
       """import locus4s.Index

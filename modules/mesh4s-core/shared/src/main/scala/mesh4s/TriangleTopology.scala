@@ -16,6 +16,9 @@ sealed abstract class TriangleTopology:
   val faces: FiniteDomain[Face]
   val halfedges: FiniteDomain[Halfedge]
 
+  /** Present only for owners restored through [[TopologyRegistry]]. */
+  def persistenceRecord: Option[TriangleTopologyRecord]
+
   type VertexIndex = Index[Vertex]
   type EdgeIndex = Index[Edge]
   type FaceIndex = Index[Face]
@@ -75,6 +78,26 @@ sealed abstract class TriangleTopology:
   def chains: SurfaceChains[this.type] =
     new SurfaceChains(this)
 
+  /** Structural digest with no owner or persistent-identity authority. */
+  def connectivityFingerprint: TopologyFingerprint =
+    TopologyFingerprint.compute(vertices.size, faceVertexOrdinals)
+
+  /** Explicit O(F) comparison of vertex count and ordered triangle rows. */
+  def sameConnectivity(that: TriangleTopology): Boolean =
+    vertices.size == that.vertices.size &&
+      faceVertexOrdinals.sameElements(that.faceVertexOrdinals)
+
+  def toRecord(
+      topologyKey: TopologyKey,
+      vertexDomain: locus4s.DomainRecord
+  ): Either[TopologyRecordError, TriangleTopologyRecord] =
+    TriangleTopologyRecord.fromTopology(this, topologyKey, vertexDomain)
+
+  def align(
+      that: TriangleTopology
+  ): Either[TopologyAlignmentError, TopologyAlignment[this.type, that.type]] =
+    TopologyAlignment.check(this, that)
+
   def requireClosed: Either[BoundaryReport, ClosedTopology[this.type]] =
     val report =
       BoundaryReport(
@@ -131,6 +154,19 @@ object TriangleTopology:
   ): Either[OrientationError, OrientedBuild] =
     TopologyOrienter.orientAndBuild(table, issueLimit)
 
+  private[mesh4s] def sameOrderedIncidence(
+      left: TriangleTopology,
+      right: TriangleTopology
+  ): Boolean =
+    left.vertices.size == right.vertices.size &&
+      left.edges.size == right.edges.size &&
+      left.faces.size == right.faces.size &&
+      left.halfedges.size == right.halfedges.size &&
+      left.faceVertexOrdinals.sameElements(right.faceVertexOrdinals) &&
+      left.oppositeOrdinals.sameElements(right.oppositeOrdinals) &&
+      left.edgeOfHalfedgeOrdinals.sameElements(right.edgeOfHalfedgeOrdinals) &&
+      left.halfedgeOfEdgeOrdinals.sameElements(right.halfedgeOfEdgeOrdinals)
+
 final class TopologyOn[V] private[mesh4s] (
     val vertices: FiniteDomain[V]
 ):
@@ -150,7 +186,8 @@ private final class PackedTopology[V, E, F, H](
     private val edgeOfHalfedge: Array[Int],
     private val halfedgeOfEdge: Array[Int],
     private val incidentFaceRows: Array[Array[Int]],
-    private val neighborRows: Array[Array[Int]]
+    private val neighborRows: Array[Array[Int]],
+    val persistenceRecord: Option[TriangleTopologyRecord] = None
 ) extends TriangleTopology:
   type Vertex = V
   type Edge = E
