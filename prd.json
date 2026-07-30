@@ -1,0 +1,1946 @@
+{
+  "schema_version": "1.0",
+  "document_type": "product_requirements_document",
+  "metadata": {
+    "product": "mesh4s",
+    "target_release": "0.1.0",
+    "status": "draft",
+    "created_on": "2026-07-30",
+    "workspace": "/Users/bbuchsbaum/code/scala/mesh4s",
+    "spatial4s_workspace": "/Users/bbuchsbaum/code/scala/spatial4s",
+    "source_of_truth": "prd.json"
+  },
+  "executive_summary": {
+    "product": "mesh4s is a Scala library for immutable, identity-safe, oriented triangular surface topology, its geometric realizations, and its intrinsic piecewise-Euclidean metrics.",
+    "problem": "The current ecosystem has finite identity in locus4s, grid geometry in image4s, transformations in reframe4s, and abstract adjacency in graph4s, but it has no foundational owner for oriented two-dimensional incidence. ScalaFIM surface currently fills that gap with a parallel vertex, field, subset, mapping, and adjacency system.",
+    "solution": "mesh4s will make TriangleTopology the trusted owner of vertex, edge, face, and face-halfedge domains. SurfaceRealization will attach packed coordinates in a typed spatial frame. PiecewiseEuclideanMetric will represent intrinsic edge-length geometry. Arbitrary cell data will use locus4s Field and related finite-domain structures.",
+    "release_thesis": "Version 0.1 will support immutable oriented triangular 2-manifolds, including disconnected surfaces and surfaces with boundary, while excluding unused vertices and nonmanifold topology from the trusted representation.",
+    "central_model": [
+      "TriangleTopology",
+      "SurfaceRealization or PiecewiseEuclideanMetric",
+      "locus4s Field"
+    ]
+  },
+  "terminology": [
+    {
+      "term": "spatial4s.Frame",
+      "meaning": "A typed coordinate frame that owns the meaning and identity of Point and Vec coordinates.",
+      "disambiguation": "This type is unrelated to frame4s, an existing typed dataframe library in the Scala ecosystem."
+    },
+    {
+      "term": "face-halfedge",
+      "meaning": "One directed edge occurrence belonging to one triangle face. mesh4s stores exactly three face-halfedges per face and does not synthesize exterior boundary halfedges."
+    },
+    {
+      "term": "connectivity fingerprint",
+      "meaning": "A structural digest of vertex count and ordered triangle rows. It is not an owner identity or permission to transport indices."
+    }
+  ],
+  "current_state": {
+    "mesh4s": {
+      "initial_state": "empty_directory",
+      "current_contents": [
+        "prd.json"
+      ],
+      "git_repository": false,
+      "path": "/Users/bbuchsbaum/code/scala/mesh4s"
+    },
+    "spatial4s": {
+      "initial_state": "empty_directory",
+      "current_state": "empty_directory",
+      "git_repository": false,
+      "path": "/Users/bbuchsbaum/code/scala/spatial4s"
+    },
+    "ecosystem_findings": [
+      {
+        "repository": "locus4s",
+        "finding": "FiniteDomain, owner-safe opaque Index values, DomainKey, registries, alignments, Field, Selection, typed maps, and Relation already provide the finite-data substrate required by mesh4s.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/locus4s/modules/locus4s-core/shared/src/main/scala/locus4s/Space.scala",
+          "/Users/bbuchsbaum/code/scala/locus4s/modules/locus4s-data/shared/src/main/scala/locus4s/data/IndexedField.scala"
+        ]
+      },
+      {
+        "repository": "image4s",
+        "finding": "image4s-geometry currently contains both neutral spatial concepts and image-grid-specific concepts. The neutral concepts must move to spatial4s before mesh4s-geometry freezes its public API.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/image4s/modules/image4s-geometry/shared/src/main/scala/image4s/geometry/Dimension.scala",
+          "/Users/bbuchsbaum/code/scala/image4s/modules/image4s-geometry/shared/src/main/scala/image4s/geometry/Identity.scala",
+          "/Users/bbuchsbaum/code/scala/image4s/modules/image4s-geometry/shared/src/main/scala/image4s/geometry/Coordinates.scala",
+          "/Users/bbuchsbaum/code/scala/image4s/modules/image4s-geometry/shared/src/main/scala/image4s/geometry/Grid.scala"
+        ]
+      },
+      {
+        "repository": "reframe4s",
+        "finding": "reframe4s imports the current image4s geometry namespace throughout its source tree. Moving Frame, Point, Vec, and affine primitives requires a coordinated migration rather than a source-only package rename.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/reframe4s"
+        ]
+      },
+      {
+        "repository": "graph4s",
+        "finding": "IndexedGraph vertex and edge identifiers belong to one compiled CSR snapshot. They are appropriate for graph algorithms but not for persisted scientific mesh-cell identity.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/graph4s/indexed/src/main/scala/graph4s/indexed/IndexedGraph.scala"
+        ]
+      },
+      {
+        "repository": "frame4s",
+        "finding": "frame4s is an existing typed dataframe library. It is unrelated to spatial coordinate frames even though spatial4s will expose a central type named Frame.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/frame4s"
+        ]
+      },
+      {
+        "repository": "scalafim",
+        "finding": "ScalaFIM surface currently owns parallel VertexId, FaceId, SurfaceField, ROI, mapping, topology, and geometry structures, then converts selected values into locus4s.",
+        "evidence": [
+          "/Users/bbuchsbaum/code/scala/scalafim/modules/surface/shared/src/main/scala/scalafim/surface/Ids.scala",
+          "/Users/bbuchsbaum/code/scala/scalafim/modules/surface/shared/src/main/scala/scalafim/surface/TriangleMesh.scala",
+          "/Users/bbuchsbaum/code/scala/scalafim/modules/surface/shared/src/main/scala/scalafim/surface/MeshTopology.scala",
+          "/Users/bbuchsbaum/code/scala/scalafim/modules/surface/shared/src/main/scala/scalafim/surface/SurfaceData.scala",
+          "/Users/bbuchsbaum/code/scala/scalafim/modules/surface/shared/src/main/scala/scalafim/surface/SurfaceLocusDomain.scala"
+        ]
+      }
+    ],
+    "planning_constraints": [
+      "The inspected image4s, graph4s, reframe4s, and ScalaFIM directories contain unpublished or uncommitted work and must not be treated as stable released contracts.",
+      "Dependency revisions must be verified from a fresh checkout before release claims are made.",
+      "mesh4s-core must be able to progress while spatial4s is being extracted.",
+      "mesh4s-geometry must not freeze or release against a second, mesh-specific frame identity system.",
+      "Documentation must distinguish spatial4s.Frame, which represents a coordinate frame, from the unrelated frame4s typed dataframe library."
+    ]
+  },
+  "users_and_use_cases": [
+    {
+      "user": "Scientific Scala library author",
+      "needs": [
+        "Construct a trusted oriented manifold topology from triangle rows.",
+        "Attach typed fields to vertices, edges, faces, or corners without creating another data hierarchy.",
+        "Use topology-owned indices that cannot be confused with another topology or another cell kind."
+      ]
+    },
+    {
+      "user": "Neuroimaging application author",
+      "needs": [
+        "Represent white, pial, inflated, and spherical coordinates as realizations of one topology.",
+        "Attach thickness, labels, masks, searchlights, and correspondences to the correct finite domain.",
+        "Interoperate safely with image grids and typed transformations."
+      ]
+    },
+    {
+      "user": "Geometry or numerical-method author",
+      "needs": [
+        "Traverse oriented incidence without allocation of cell wrapper objects.",
+        "Operate on an intrinsic metric without requiring ambient vertex positions.",
+        "Build later DEC, FEM, geodesic, and spectral operators from signed incidence and metric data."
+      ]
+    },
+    {
+      "user": "Codec or repair-tool author",
+      "needs": [
+        "Inspect malformed triangle tables without pretending they are trusted manifolds.",
+        "Receive bounded structural diagnostics with concrete witnesses.",
+        "Invoke orientation or compaction as explicit transformations that return correspondence evidence."
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "G-001",
+      "goal": "Provide one trusted topology owner for oriented triangular manifold incidence."
+    },
+    {
+      "id": "G-002",
+      "goal": "Use locus4s directly for cell identity, fields, subsets, maps, relations, restoration, and alignment."
+    },
+    {
+      "id": "G-003",
+      "goal": "Separate topology, ambient realization, intrinsic metric, and attached data."
+    },
+    {
+      "id": "G-004",
+      "goal": "Support multiple coordinate realizations of one topology without relying on equal vertex counts as compatibility evidence."
+    },
+    {
+      "id": "G-005",
+      "goal": "Expose deterministic, allocation-conscious traversal suitable for JVM and Scala.js numerical kernels."
+    },
+    {
+      "id": "G-006",
+      "goal": "Provide persistence and explicit alignment without making ordinary equality perform a structural scan."
+    },
+    {
+      "id": "G-007",
+      "goal": "Integrate with graph4s through explicit primal and dual projections without making graph adjacency a second source of truth."
+    },
+    {
+      "id": "G-008",
+      "goal": "Prove the design through a representative ScalaFIM cortical-surface workflow before releasing 0.1."
+    }
+  ],
+  "priority_definitions": {
+    "P0": "Required for the 0.1 release. Work may not be omitted without revising the PRD.",
+    "P1": "Included in the planned 0.1 scope. It may be removed only through an explicit scope decision that preserves the central product contract.",
+    "deferred": "Not part of 0.1 and must not delay its release gates."
+  },
+  "success_measures": [
+    {
+      "id": "SM-001",
+      "measure": "Every accepted TriangleTopology satisfies the optimized and independent-reference manifold courts."
+    },
+    {
+      "id": "SM-002",
+      "measure": "JVM and Scala.js agree on deterministic cell ordering, traversal checksums, records, and fingerprints."
+    },
+    {
+      "id": "SM-003",
+      "measure": "Primitive topology and coordinate traversal allocates no wrapper object per visited cell."
+    },
+    {
+      "id": "SM-004",
+      "measure": "The representative ScalaFIM workflow uses one topology for white, pial, inflated, and spherical realizations and contains no second public vertex, field, or adjacency authority."
+    },
+    {
+      "id": "SM-005",
+      "measure": "A fresh checkout builds all release artifacts and executable documentation from immutable dependency revisions."
+    }
+  ],
+  "non_goals_for_0_1": [
+    "Arbitrary polygon meshes.",
+    "A generic N-dimensional cell-complex framework.",
+    "A trusted nonmanifold mesh type.",
+    "Tetrahedral or volumetric meshes.",
+    "A mutable public halfedge editor.",
+    "Silent orientation repair, invalid-face dropping, or implicit vertex compaction.",
+    "Automatic topology-isomorphism search.",
+    "Self-intersection or embeddedness certification.",
+    "Curvature-estimator catalogues.",
+    "A complete geodesic-algorithm suite.",
+    "Decimation, remeshing, subdivision, or topology editing.",
+    "A mesh-specific multidimensional array type.",
+    "A string-keyed property bag.",
+    "A core dependency on graph4s, Gale, Ravel, image4s, reframe4s, or ScalaFIM.",
+    "Format-specific neuroimaging policy in the core library."
+  ],
+  "accepted_design_decisions": [
+    {
+      "id": "D-001",
+      "decision": "The canonical trusted topology is an immutable oriented triangular 2-manifold, possibly disconnected and possibly with boundary.",
+      "consequence": "Nonmanifold, inconsistently oriented, and partially invalid triangle data remains an untrusted record until a strict build succeeds."
+    },
+    {
+      "id": "D-002",
+      "decision": "A nonempty topology cannot contain an unused vertex.",
+      "consequence": "Construction admits the fully empty topology with V, E, F, and H all zero. It rejects every partially empty topology with vertices but no incident faces. Explicit compaction may be added later and must return exact old/new maps."
+    },
+    {
+      "id": "D-003",
+      "decision": "mesh4s uses four locus4s finite domains for vertices, edges, faces, and face-halfedges.",
+      "consequence": "Cell-kind and owner mismatches are rejected by types after the initial dynamic ordinal check."
+    },
+    {
+      "id": "D-004",
+      "decision": "The optimized representation uses one face-halfedge per triangle corner, so the halfedge count is exactly three times the face count.",
+      "consequence": "Boundary edges have one face-halfedge and public opposite lookup is partial. No synthetic exterior halfedges are stored."
+    },
+    {
+      "id": "D-005",
+      "decision": "Topology construction is strict and never repairs input.",
+      "consequence": "Orientation, compaction, and later repair operations are separately named transformations with explicit reports and correspondence values."
+    },
+    {
+      "id": "D-006",
+      "decision": "Topology auditing is bounded and staged.",
+      "consequence": "Hostile files cannot force an unbounded diagnostic result, and an audit records which global stages were conclusive."
+    },
+    {
+      "id": "D-007",
+      "decision": "SurfaceRealization does not claim to be an embedding.",
+      "consequence": "Finite vertex coordinates are accepted without claiming nondegeneracy, injectivity, or freedom from self-intersection."
+    },
+    {
+      "id": "D-008",
+      "decision": "PiecewiseEuclideanMetric is a peer of SurfaceRealization rather than a cached implementation detail.",
+      "consequence": "Intrinsic algorithms can depend on edge lengths and units without requiring ambient coordinates."
+    },
+    {
+      "id": "D-009",
+      "decision": "Cell-associated data uses locus4s Field, Region, Selection, typed maps, and Relation.",
+      "consequence": "mesh4s will not create VertexData, FaceData, SurfaceField, or a dynamic property-map hierarchy."
+    },
+    {
+      "id": "D-010",
+      "decision": "The spatial4s extraction runs in parallel with topology development.",
+      "consequence": "mesh4s-core can begin against locus4s, but mesh4s-geometry cannot freeze until the shared frame and coordinate contract is available."
+    },
+    {
+      "id": "D-011",
+      "decision": "Graph conversion is an optional, named forgetful projection.",
+      "consequence": "TriangleTopology stores no graph and graph algorithms cannot silently replace surface incidence or surface metric semantics."
+    },
+    {
+      "id": "D-012",
+      "decision": "Runtime topology equality is owner identity.",
+      "consequence": "Structural comparison, persistence alignment, and later isomorphism are explicit operations with explicit costs."
+    },
+    {
+      "id": "D-013",
+      "decision": "mesh4s-core depends directly on locus4s-data.",
+      "consequence": "Construction reports, orientation flip fields, and topology-associated values use locus4s Field without introducing another field abstraction."
+    }
+  ],
+  "architecture": {
+    "dependency_rules": [
+      {
+        "consumer": "mesh4s-core",
+        "allowed_dependencies": [
+          "locus4s-core",
+          "locus4s-data"
+        ],
+        "forbidden_dependencies": [
+          "spatial4s",
+          "image4s",
+          "reframe4s",
+          "graph4s",
+          "Gale",
+          "Ravel",
+          "ScalaFIM"
+        ]
+      },
+      {
+        "consumer": "mesh4s-geometry",
+        "allowed_dependencies": [
+          "mesh4s-core",
+          "locus4s-core",
+          "locus4s-data",
+          "spatial4s-core"
+        ],
+        "forbidden_dependencies": [
+          "image4s",
+          "reframe4s",
+          "graph4s",
+          "ScalaFIM"
+        ]
+      },
+      {
+        "consumer": "mesh4s-reference",
+        "allowed_dependencies": [
+          "mesh4s-core",
+          "mesh4s-geometry",
+          "Scala standard immutable collections"
+        ],
+        "constraint": "The reference implementation must not reuse the optimized builder's primitive tables or traversal implementation."
+      },
+      {
+        "consumer": "mesh4s-laws",
+        "allowed_dependencies": [
+          "mesh4s-core",
+          "mesh4s-geometry",
+          "mesh4s-reference",
+          "ScalaCheck",
+          "Discipline",
+          "MUnit"
+        ]
+      },
+      {
+        "consumer": "mesh4s-graph4s",
+        "allowed_dependencies": [
+          "mesh4s-core",
+          "mesh4s-geometry",
+          "graph4s-core",
+          "graph4s-indexed"
+        ]
+      }
+    ],
+    "release_artifacts": [
+      {
+        "name": "mesh4s-core",
+        "purpose": "Trusted topology, construction, audit, traversal, chain incidence, persistence, registry, alignment, and topological evidence."
+      },
+      {
+        "name": "mesh4s-geometry",
+        "purpose": "Packed point fields, realizations, nondegeneracy evidence, intrinsic metrics, and unambiguous local geometry."
+      },
+      {
+        "name": "mesh4s-reference",
+        "purpose": "Deliberately slow independent topology and geometry oracles."
+      },
+      {
+        "name": "mesh4s-laws",
+        "purpose": "Generators, law sets, compile-time ownership tests, and performance courts."
+      },
+      {
+        "name": "mesh4s-graph4s",
+        "purpose": "Primal, metric-weighted primal, and interior-dual graph projections with correspondence witnesses."
+      }
+    ],
+    "external_workstreams": [
+      {
+        "name": "spatial4s-core extraction",
+        "workspace": "/Users/bbuchsbaum/code/scala/spatial4s",
+        "owns": [
+          "Dim, D2, D3, and Dimension",
+          "Frame identity, records, registries, and alignment",
+          "Point and Vec",
+          "CoordinateUnit and CoordinateConvention",
+          "Validated affine coefficient primitives"
+        ],
+        "does_not_own": [
+          "Image lattice indices",
+          "Continuous image indices",
+          "Grid identity or shape",
+          "Registration or resampling policy"
+        ],
+        "mesh4s_release_blocking_scope": [
+          "Freeze the shared public contract.",
+          "Implement and publish spatial4s-core at the exact revision consumed by mesh4s-geometry."
+        ],
+        "non_blocking_follow_up_migrations": [
+          {
+            "id": "EXT-SPT-002",
+            "repository": "image4s",
+            "work": "Retain grid-specific concepts in image4s and provide temporary re-exports of migrated neutral spatial types.",
+            "release_blocking_for_mesh4s_0_1": false
+          },
+          {
+            "id": "EXT-SPT-003",
+            "repository": "reframe4s",
+            "work": "Migrate reframe4s to import Frame, Point, Vec, and affine primitives directly from spatial4s.",
+            "release_blocking_for_mesh4s_0_1": false
+          }
+        ],
+        "integration_rule": "mesh4s-geometry depends directly on spatial4s-core. image4s and reframe4s migrations are tracked by their own repositories and do not block mesh4s 0.1."
+      }
+    ],
+    "later_artifacts": [
+      "mesh4s-gifti",
+      "mesh4s-freesurfer",
+      "mesh4s-operators or mesh4s-gale",
+      "mesh4s-spatial",
+      "mesh4s-edit",
+      "mesh4s-obj",
+      "mesh4s-ply"
+    ]
+  },
+  "domain_contract": {
+    "trusted_topology": {
+      "name": "TriangleTopology",
+      "cell_domains": [
+        "Vertex",
+        "Edge",
+        "Face",
+        "Halfedge"
+      ],
+      "invariants": [
+        "Each face contains exactly three distinct in-domain vertices.",
+        "Duplicate faces are absent independent of cyclic rotation and reversal.",
+        "Each edge has one or two incident face-halfedges.",
+        "Two incident faces traverse their shared edge in opposite directions.",
+        "Each interior vertex link is one cycle.",
+        "Each boundary vertex link is one path.",
+        "Every vertex of a nonempty topology is incident to at least one face.",
+        "The empty topology is admitted only when V, E, F, and H are all zero.",
+        "The topology is immutable after construction.",
+        "The halfedge count equals three times the face count.",
+        "Three times the face count equals twice the interior-edge count plus the boundary-edge count.",
+        "All primitive stores are addressable by the supported runtime."
+      ]
+    },
+    "untrusted_input": {
+      "name": "TriangleTable",
+      "capabilities": [
+        "Retain ordered triangle rows.",
+        "Retain an asserted vertex count.",
+        "Support inspection and explicit transformations."
+      ],
+      "prohibited_capabilities": [
+        "Trusted adjacency queries.",
+        "Manifold fan traversal.",
+        "Boundary-loop claims.",
+        "Typed topology-cell fields."
+      ]
+    },
+    "canonical_primitive_storage": [
+      {
+        "name": "faceVertices",
+        "type": "Int[3F]",
+        "meaning": "Origin vertex ordinal for each face-halfedge."
+      },
+      {
+        "name": "oppositeHalfedge",
+        "type": "Int[3F]",
+        "meaning": "Opposite face-halfedge ordinal or a private boundary sentinel."
+      },
+      {
+        "name": "edgeOfHalfedge",
+        "type": "Int[3F]",
+        "meaning": "Underlying unoriented edge ordinal."
+      },
+      {
+        "name": "halfedgeOfEdge",
+        "type": "Int[E]",
+        "meaning": "One representative face-halfedge for each edge."
+      },
+      {
+        "name": "halfedgeOfVertex",
+        "type": "Int[V]",
+        "meaning": "One representative outgoing face-halfedge for each vertex."
+      }
+    ],
+    "deterministic_indexing": [
+      "Vertex order is the supplied finite-domain order.",
+      "Face order is the input row order.",
+      "Halfedge order is face-major with local corners zero through two.",
+      "Edge order is first occurrence in face-major halfedge order.",
+      "The canonical chain orientation of an edge runs from the lower vertex ordinal to the higher ordinal.",
+      "Hash-table iteration cannot determine any public ordinal."
+    ],
+    "complexity_contract": [
+      {
+        "operation": "faceOf, origin, target, next, previous, edgeOf, opposite, face vertices, edge endpoints",
+        "complexity": "O(1)"
+      },
+      {
+        "operation": "vertex fan, neighbor traversal, incident-face traversal",
+        "complexity": "O(vertex degree)"
+      },
+      {
+        "operation": "components, boundary loops, full topological summary",
+        "complexity": "O(V + H)"
+      }
+    ]
+  },
+  "functional_requirements": [
+    {
+      "id": "FND-001",
+      "priority": "P0",
+      "artifact": "build",
+      "requirement": "Initialize mesh4s as a version-controlled Scala 3.7.4 multi-project build targeting JVM and Scala.js.",
+      "acceptance_criteria": [
+        "Git is initialized and prd.json is committed before implementation work begins so later scope revisions have a durable record.",
+        "The build has named modules for core, geometry, reference, laws, and graph4s integration.",
+        "Scala 3.7.4 is pinned explicitly, and compiler-version changes require a reviewed build update.",
+        "The build uses the agreed sbt-typelevel settings for cross-project organization, publishing, and documentation.",
+        "Strict compiler warnings and formatting checks are enabled.",
+        "A fresh checkout can compile all JVM and Scala.js modules from documented commands."
+      ]
+    },
+    {
+      "id": "FND-002",
+      "priority": "P0",
+      "artifact": "build",
+      "requirement": "Pin each source dependency to an immutable revision and support explicit local development overrides.",
+      "acceptance_criteria": [
+        "The default build does not depend on an uncommitted sibling checkout.",
+        "Local overrides are clearly reported by the build.",
+        "Release certification records the exact locus4s, spatial4s, and graph4s revisions."
+      ]
+    },
+    {
+      "id": "FND-003",
+      "priority": "P0",
+      "artifact": "architecture spike",
+      "requirement": "Compile representative dependent-type signatures before implementing primitive storage.",
+      "acceptance_criteria": [
+        "Ordinary application code can name topology-local vertex, edge, face, and halfedge indices without supplying four explicit type parameters.",
+        "Compile-negative examples reject a face where a vertex is required.",
+        "Compile-negative examples reject a vertex from another topology.",
+        "Public overloads do not rely only on opaque Int index types for JVM method distinction."
+      ]
+    },
+    {
+      "id": "FND-004",
+      "priority": "P0",
+      "artifact": "continuous integration",
+      "depends_on": [
+        "FND-001"
+      ],
+      "requirement": "Run the release verification matrix in continuous integration.",
+      "acceptance_criteria": [
+        "CI runs formatting and strict compilation checks.",
+        "CI runs JVM and Scala.js unit and law suites.",
+        "CI performs Scala.js FullOpt linking.",
+        "CI compiles the executable documentation.",
+        "CI records the exact dependency revisions and fails when the default build needs an unpublished sibling checkout."
+      ]
+    },
+    {
+      "id": "FND-005",
+      "priority": "P0",
+      "artifact": "binary compatibility",
+      "depends_on": [
+        "FND-001"
+      ],
+      "requirement": "Declare the binary-compatibility policy before publishing 0.1.",
+      "acceptance_criteria": [
+        "Pre-0.1 builds may change without a MiMa baseline.",
+        "The published 0.1 artifacts become the MiMa baseline for subsequent compatible releases.",
+        "Any later compatibility exclusion requires a documented rationale in the repository."
+      ]
+    },
+    {
+      "id": "SPT-001",
+      "priority": "P0",
+      "artifact": "spatial4s contract",
+      "requirement": "Freeze one shared spatial identity and coordinate contract for image4s, mesh4s, and reframe4s.",
+      "acceptance_criteria": [
+        "Frame supports ephemeral and caller-supplied persistent identity.",
+        "Independent restoration requires explicit alignment.",
+        "The contract defines the Frame owner used directly by Point and Vec and designates that API as the migration target for image4s and reframe4s.",
+        "mesh4s does not wait for the image4s or reframe4s migration after the contract is frozen.",
+        "CoordinateUnit can represent length, dimensionless, and validated custom units.",
+        "CoordinateConvention is extensible beyond RAS, LPS, and unspecified.",
+        "The contract documentation states that spatial4s.Frame is a coordinate frame and is unrelated to the frame4s typed dataframe library."
+      ]
+    },
+    {
+      "id": "SPT-004",
+      "priority": "P0",
+      "artifact": "spatial4s-core",
+      "depends_on": [
+        "SPT-001"
+      ],
+      "requirement": "Implement and publish the frozen spatial4s-core contract consumed by mesh4s-geometry.",
+      "acceptance_criteria": [
+        "The published API implements the approved Frame, Point, Vec, unit, convention, identity, registry, alignment, and affine contracts.",
+        "JVM and Scala.js identity and coordinate-law suites pass.",
+        "mesh4s-geometry resolves the exact published or immutable source revision without importing image4s or reframe4s."
+      ]
+    },
+    {
+      "id": "TOP-001",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "requirement": "Represent vertices, edges, faces, and face-halfedges as four topology-owned locus4s finite domains.",
+      "acceptance_criteria": [
+        "Each public cell index is owned by exactly one topology and one cell kind.",
+        "Dynamic ordinals are checked when entering a domain and topology operations are total afterward.",
+        "No public VertexId, FaceId, invalid-cell sentinel, or raw Int cell API competes with the typed indices."
+      ]
+    },
+    {
+      "id": "TOP-002",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "requirement": "Provide an inspectable untrusted TriangleTable that does not expose trusted manifold operations.",
+      "acceptance_criteria": [
+        "Codecs and tests can preserve ordered rows and vertex count without constructing a topology.",
+        "TriangleTable can be passed to inspect, strict build, and explicit orientation operations.",
+        "No method on TriangleTable claims manifold adjacency or boundary structure."
+      ]
+    },
+    {
+      "id": "TOP-003",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-001",
+        "TOP-002"
+      ],
+      "requirement": "Implement strict construction from typed faces and ordinal triangle rows.",
+      "acceptance_criteria": [
+        "Construction preserves supplied face and corner order.",
+        "Construction admits the empty topology only when the vertex count and every derived cell count are zero.",
+        "Construction accepts oriented triangular manifolds with boundary and multiple connected components.",
+        "Construction rejects invalid rows, duplicate faces, nonmanifold edges, orientation conflicts, nonmanifold vertex links, and unused vertices.",
+        "No boolean option enables repair, dropping, compaction, or automatic orientation."
+      ]
+    },
+    {
+      "id": "TOP-004",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "requirement": "Implement a bounded staged TopologyAudit with concrete witnesses.",
+      "acceptance_criteria": [
+        "The caller can set an issue limit.",
+        "The result records whether diagnostics were truncated.",
+        "The result records which audit stages completed.",
+        "Each issue reports the relevant face, corner, vertex, edge endpoints, or witness faces.",
+        "Invalid local faces do not produce misleading claims that every downstream global stage was fully checked."
+      ]
+    },
+    {
+      "id": "TOP-005",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-003"
+      ],
+      "requirement": "Compile a trusted topology into the canonical face-corner primitive tables.",
+      "acceptance_criteria": [
+        "The halfedge count equals three times the face count.",
+        "Boundary state is represented only by a private primitive sentinel.",
+        "No object is stored per cell.",
+        "All public indexing rules are deterministic and tested."
+      ]
+    },
+    {
+      "id": "TOP-006",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-005"
+      ],
+      "requirement": "Expose total constant-time local incidence and allocation-conscious primitive traversal.",
+      "acceptance_criteria": [
+        "origin, target, next, previous, faceOf, edgeOf, face vertices, and edge endpoints are total for valid typed indices.",
+        "opposite returns None only for a boundary edge.",
+        "foreachNeighbor, foreachIncidentFace, foreachFaceHalfedge, and foreachBoundaryHalfedge avoid per-cell index-wrapper allocation.",
+        "Convenience collection materialization is separately documented as allocating."
+      ]
+    },
+    {
+      "id": "TOP-007",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-006"
+      ],
+      "requirement": "Represent interior vertex rings and boundary vertex fans without hiding their different ordering semantics.",
+      "acceptance_criteria": [
+        "Interior fan traversal is cyclic.",
+        "Boundary fan traversal is a path with two boundary ends.",
+        "A fan stores one ordered halfedge traversal and derives faces and neighbors from it.",
+        "Deterministic materialization uses the documented canonical start and orientation."
+      ]
+    },
+    {
+      "id": "TOP-008",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-006"
+      ],
+      "requirement": "Expose deterministic boundary loops, components, Euler characteristic, and topological summaries.",
+      "acceptance_criteria": [
+        "Boundary loops are disjoint directed cycles covering every boundary halfedge exactly once.",
+        "Component order and loop order are deterministic.",
+        "Full summaries run in O(V + H).",
+        "Closedness and connectedness checks can retain reusable evidence."
+      ]
+    },
+    {
+      "id": "TOP-009",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-005"
+      ],
+      "requirement": "Expose signed edge and face boundary incidence as an oriented chain complex.",
+      "acceptance_criteria": [
+        "Each edge is oriented from lower to higher vertex ordinal.",
+        "Primitive callbacks emit only coefficients plus typed cell indices.",
+        "Public methods have distinct JVM-safe names for edge and face boundary traversal.",
+        "The exact law boundary1 composed with boundary2 equals zero holds for every constructed topology."
+      ]
+    },
+    {
+      "id": "TOP-010",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-004"
+      ],
+      "requirement": "Provide an explicit deterministic orientAndBuild operation.",
+      "acceptance_criteria": [
+        "The operation first rejects out-of-domain or repeated face vertices, duplicate faces, and edges with more than two incident faces using the ordinary bounded audit witnesses.",
+        "Orientation components are the connected components of the face graph whose adjacency is shared undirected edges, not shared vertices.",
+        "The first face orientation in each face-graph component is preserved.",
+        "Face row order is preserved.",
+        "The operation returns the exact face-flip Field over the result topology's Face domain, whose ordinals correspond to the unchanged input row order.",
+        "A parity contradiction returns a cycle witness for nonorientability.",
+        "After orienting, strict construction can still reject a nonmanifold vertex link, an unused vertex, or another invariant outside the orientation problem.",
+        "The operation never claims to choose an outward orientation."
+      ]
+    },
+    {
+      "id": "TOP-011",
+      "priority": "P1",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-008"
+      ],
+      "requirement": "Provide evidence-bearing closed and connected views without encoding all properties as phantom flags.",
+      "acceptance_criteria": [
+        "requireClosed returns either a boundary report or closed evidence.",
+        "requireConnected returns either component evidence or a connected view.",
+        "Computed certificates can be reused by downstream algorithms.",
+        "Ordinary topology construction does not require closedness or connectedness."
+      ]
+    },
+    {
+      "id": "ID-001",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "TOP-005"
+      ],
+      "requirement": "Define a versioned topology record with one authoritative topology key and deterministic incidence.",
+      "acceptance_criteria": [
+        "The record contains the topology key, vertex-domain record, ordered face vertex ordinals, indexing-scheme version, and connectivity fingerprint.",
+        "Face, edge, and halfedge domain identities are derived deterministically instead of supplied as independent authorities.",
+        "The record rejects a fingerprint that does not match its canonical incidence bytes."
+      ]
+    },
+    {
+      "id": "ID-002",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "ID-001"
+      ],
+      "requirement": "Define a versioned SHA-256 topology fingerprint over canonical bytes.",
+      "acceptance_criteria": [
+        "The byte encoding includes only the fingerprint scheme version, vertex count, and ordered triangle rows.",
+        "The fingerprint excludes runtime owner tokens, TopologyKey, DomainKey, display metadata, and registry state.",
+        "Two topologies with the same vertex count and ordered triangle rows have the same connectivity fingerprint even when their vertex domains are ephemeral and independently owned.",
+        "JVM and Scala.js produce identical golden fingerprints.",
+        "A fingerprint is structural evidence only. It never authorizes index transport, creates identity, or replaces a full incidence check during alignment."
+      ]
+    },
+    {
+      "id": "ID-003",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "ID-001",
+        "ID-002"
+      ],
+      "requirement": "Restore persistent topologies through an immutable registry that incorporates locus4s domain restoration.",
+      "acceptance_criteria": [
+        "The registry is a persistent threaded value: restore returns the updated registry together with the restored topology owner.",
+        "Repeated restoration through the returned registry value returns the canonical owner.",
+        "A conflicting record for an existing topology key is rejected.",
+        "Restoration in independent registries produces independent owners that cannot be mixed without alignment.",
+        "The 0.1 contract contains no global mutable or concurrent registry."
+      ]
+    },
+    {
+      "id": "ID-004",
+      "priority": "P0",
+      "artifact": "mesh4s-core",
+      "depends_on": [
+        "ID-003"
+      ],
+      "requirement": "Provide exact TopologyAlignment for independently restored copies of the same ordered topology.",
+      "acceptance_criteria": [
+        "Alignment validates all incidence once.",
+        "Alignment contains vertex, edge, face, and halfedge domain alignments.",
+        "Transport after validation is ordinal-preserving and O(1).",
+        "Identity, inverse, and associative composition laws hold.",
+        "Changed ordering or incidence is rejected rather than treated as alignment."
+      ]
+    },
+    {
+      "id": "ID-005",
+      "priority": "P1",
+      "artifact": "mesh4s-core",
+      "requirement": "Keep runtime equality, structural comparison, alignment, and isomorphism as separate operations.",
+      "acceptance_criteria": [
+        "Ordinary equality is O(1) owner identity.",
+        "sameConnectivity has an explicit linear cost.",
+        "align requires equal ordered persistent topology.",
+        "No automatic topology-isomorphism search is present in 0.1."
+      ]
+    },
+    {
+      "id": "GEO-001",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "SPT-004",
+        "TOP-001"
+      ],
+      "requirement": "Implement a frame-owned packed PointField over a locus4s domain.",
+      "acceptance_criteria": [
+        "The frame is stored once per field rather than once per point.",
+        "Packed float and double implementations are supported or the storage extension point is documented.",
+        "coordinate access and D2 or D3 primitive traversal do not allocate Point objects per element.",
+        "point(index) remains available as a semantic convenience.",
+        "Bulk interleaved float and double export supports renderers and codecs."
+      ]
+    },
+    {
+      "id": "GEO-002",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "GEO-001",
+        "TOP-003"
+      ],
+      "requirement": "Implement SurfaceRealization as finite coordinates over one exact topology in one typed frame.",
+      "acceptance_criteria": [
+        "Construction checks the exact topology vertex domain.",
+        "Construction rejects non-finite coordinates.",
+        "Construction copies input or retains only storage with documented immutable ownership.",
+        "The base type does not claim nondegeneracy, injectivity, or absence of self-intersections.",
+        "No secondary untyped surfaceToWorld matrix is stored."
+      ]
+    },
+    {
+      "id": "GEO-003",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "GEO-002"
+      ],
+      "requirement": "Allow any number of realizations to share one exact topology.",
+      "acceptance_criteria": [
+        "White, pial, inflated, and spherical coordinates can share vertex indices and fields.",
+        "Equal vertex counts alone do not establish compatibility.",
+        "A realization from another topology owner requires exact alignment before transport."
+      ]
+    },
+    {
+      "id": "GEO-004",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "SPT-004",
+        "TOP-003"
+      ],
+      "requirement": "Implement a unit-bearing PiecewiseEuclideanMetric over topology edges.",
+      "acceptance_criteria": [
+        "Edge lengths are stored as an immutable locus4s Field or compatible primitive field implementation.",
+        "Every edge length is finite and strictly positive.",
+        "Every face satisfies a strict triangle inequality on the stored Double values: each sum of two edge lengths is greater than the third.",
+        "The exact stored-value check has no hidden epsilon and cannot be relaxed by a tolerance.",
+        "An optional explicit conditioning policy may require a larger scale-aware inequality margin and reports faces that are mathematically valid but numerically ill-conditioned.",
+        "The metric carries a coordinate unit even when no ambient realization exists."
+      ]
+    },
+    {
+      "id": "GEO-005",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "GEO-002",
+        "GEO-004",
+        "GEO-006"
+      ],
+      "requirement": "Allow a nondegenerate realization to induce and retain an intrinsic metric.",
+      "acceptance_criteria": [
+        "Induced edge lengths are symmetric and use the realization's coordinate unit.",
+        "The certification path verifies the same exact stored-Double triangle inequalities required by direct metric construction.",
+        "If floating-point rounding collapses a sliver triangle to equality, certification fails with a numerical-degeneracy witness rather than accepting a non-metric edge table.",
+        "Rigid transformations preserve the induced metric within the documented numerical policy.",
+        "Intrinsic face areas agree with realization areas within the documented tolerance."
+      ]
+    },
+    {
+      "id": "GEO-006",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "GEO-002"
+      ],
+      "requirement": "Provide explicit scale-aware nondegeneracy certification.",
+      "acceptance_criteria": [
+        "The caller supplies or selects a documented tolerance policy.",
+        "Certification combines the scale-aware area policy with the exact stored-edge triangle-inequality check.",
+        "Failure reports the degenerate face witnesses.",
+        "Success retains reusable face-area and induced-metric evidence.",
+        "No global floating-point epsilon is hidden in topology construction."
+      ]
+    },
+    {
+      "id": "GEO-007",
+      "priority": "P0",
+      "artifact": "mesh4s-geometry",
+      "depends_on": [
+        "GEO-002",
+        "GEO-006"
+      ],
+      "requirement": "Provide only geometry operations with an unambiguous 0.1 contract.",
+      "acceptance_criteria": [
+        "The API includes edge vectors, squared lengths, lengths, face centroids, bounding boxes, and total area.",
+        "D2 includes signed face area.",
+        "D3 includes vector area, unsigned area, and evidence-requiring unit face normals.",
+        "Barycentric operations state how off-plane residual is handled in D3.",
+        "No unqualified vertexNormals or curvature method appears."
+      ]
+    },
+    {
+      "id": "GRF-001",
+      "priority": "P0",
+      "artifact": "mesh4s-graph4s",
+      "depends_on": [
+        "TOP-006"
+      ],
+      "requirement": "Project a topology to its unweighted primal graph without storing that graph in the topology.",
+      "acceptance_criteria": [
+        "The graph has exactly one graph vertex per mesh vertex.",
+        "The graph has exactly one graph edge per mesh edge.",
+        "The result retains total mesh-to-indexed-graph vertex and edge correspondence.",
+        "Projection laws compare adjacency with the topology oracle."
+      ]
+    },
+    {
+      "id": "GRF-002",
+      "priority": "P1",
+      "artifact": "mesh4s-graph4s",
+      "depends_on": [
+        "TOP-006"
+      ],
+      "requirement": "Project a topology to its interior dual graph.",
+      "acceptance_criteria": [
+        "The dual graph has one vertex per mesh face.",
+        "The dual graph has one edge per interior mesh edge.",
+        "Boundary mesh edges map to no dual graph edge.",
+        "The result retains the interior-edge correspondence."
+      ]
+    },
+    {
+      "id": "GRF-003",
+      "priority": "P1",
+      "artifact": "mesh4s-graph4s",
+      "depends_on": [
+        "GEO-004",
+        "GRF-001"
+      ],
+      "requirement": "Keep topology-only and metric-weighted graph projections as distinct named operations.",
+      "acceptance_criteria": [
+        "The topology-only projection does not require geometry.",
+        "A metric-weighted projection receives an explicit metric or weighting policy.",
+        "The API does not imply that a graph Laplacian is a surface Laplace-Beltrami discretization."
+      ]
+    },
+    {
+      "id": "REF-001",
+      "priority": "P0",
+      "artifact": "mesh4s-reference",
+      "requirement": "Implement an independent map-and-set topology oracle.",
+      "acceptance_criteria": [
+        "The oracle does not call optimized construction or traversal internals.",
+        "It independently computes edges, incidence, vertex links, components, and boundary loops.",
+        "Generated valid and malformed inputs produce equivalent outcomes and witnesses where ordering is specified."
+      ]
+    },
+    {
+      "id": "REF-002",
+      "priority": "P1",
+      "artifact": "mesh4s-reference",
+      "depends_on": [
+        "GEO-007"
+      ],
+      "requirement": "Implement independent basic-geometry formulas for law comparison.",
+      "acceptance_criteria": [
+        "Optimized edge lengths, areas, centroids, normals, metrics, and barycentric results agree within explicit tolerances.",
+        "The oracle uses a representation independent of packed PointField kernels."
+      ]
+    },
+    {
+      "id": "LAW-001",
+      "priority": "P0",
+      "artifact": "mesh4s-laws",
+      "depends_on": [
+        "REF-001"
+      ],
+      "requirement": "Provide generators for valid surfaces and precise malformed witnesses.",
+      "acceptance_criteria": [
+        "Valid generators cover disks, annuli, spheres, tori, disconnected unions, and boundary patches.",
+        "Malformed generators cover out-of-range vertices, repeated corners, duplicate faces, three-face edges, orientation conflicts, bow-tie vertices, unused vertices, and nonorientable parity cycles.",
+        "Generator shrinking preserves the condition being tested."
+      ]
+    },
+    {
+      "id": "LAW-002",
+      "priority": "P0",
+      "artifact": "mesh4s-laws",
+      "depends_on": [
+        "TOP-009",
+        "LAW-001"
+      ],
+      "requirement": "Package ownership, face-cycle, opposite, manifold, boundary, chain, and orientation laws.",
+      "acceptance_criteria": [
+        "Law sets run against optimized and reference representations where applicable.",
+        "The chain law is checked exactly.",
+        "JVM and Scala.js execute the topology law suites."
+      ]
+    },
+    {
+      "id": "LAW-003",
+      "priority": "P0",
+      "artifact": "mesh4s-laws",
+      "requirement": "Add compile-time ownership tests.",
+      "acceptance_criteria": [
+        "A face cannot be passed to a vertex operation.",
+        "A vertex from another topology cannot be passed without alignment.",
+        "An image-grid index cannot be passed as a mesh vertex.",
+        "Positive examples remain concise and do not require public type projections."
+      ]
+    },
+    {
+      "id": "LAW-004",
+      "priority": "P0",
+      "artifact": "mesh4s-laws",
+      "depends_on": [
+        "ID-004"
+      ],
+      "requirement": "Activate persistence, restoration, fingerprint, and alignment laws when the persistence phase lands.",
+      "acceptance_criteria": [
+        "Record round trips, registry canonicalization, modified-incidence rejection, and alignment groupoid laws run on JVM and Scala.js.",
+        "Golden connectivity fingerprints agree across platforms.",
+        "The law suite proves that matching fingerprints alone do not authorize index transport."
+      ]
+    },
+    {
+      "id": "LAW-005",
+      "priority": "P1",
+      "artifact": "mesh4s-laws",
+      "depends_on": [
+        "REF-002",
+        "GEO-005",
+        "GEO-007"
+      ],
+      "requirement": "Activate realization, nondegeneracy, metric, and basic-geometry laws when mesh4s-geometry lands.",
+      "acceptance_criteria": [
+        "Optimized and reference geometry agree within stated tolerances.",
+        "Rigid-motion, induced-metric, exact triangle-inequality, and conditioning-policy laws run on JVM and Scala.js.",
+        "Every floating-point law states and justifies its tolerance."
+      ]
+    },
+    {
+      "id": "LAW-006",
+      "priority": "P1",
+      "artifact": "mesh4s-laws",
+      "depends_on": [
+        "GRF-001",
+        "GRF-002"
+      ],
+      "requirement": "Activate primal, weighted-primal, and interior-dual projection laws when mesh4s-graph4s lands.",
+      "acceptance_criteria": [
+        "The primal graph has total vertex and edge correspondence.",
+        "The interior dual has one graph edge per interior mesh edge and none for a boundary mesh edge.",
+        "Topology-only and metric-weighted projections remain distinct in the law API."
+      ]
+    },
+    {
+      "id": "INT-001",
+      "priority": "P0",
+      "artifact": "ScalaFIM migration",
+      "depends_on": [
+        "TOP-004",
+        "TOP-010"
+      ],
+      "requirement": "Audit every current ScalaFIM surface fixture and decoder output against the strict topology contract.",
+      "acceptance_criteria": [
+        "Every rejected fixture has a recorded issue witness.",
+        "Inconsistent tetrahedron and spherical winding is corrected or passed through orientAndBuild with an asserted flip report.",
+        "Bow-tie or graph-star fixtures are replaced by valid manifolds or moved to graph-focused tests.",
+        "No strictness rule is weakened solely to preserve a malformed legacy fixture."
+      ]
+    },
+    {
+      "id": "INT-002",
+      "priority": "P0",
+      "artifact": "ScalaFIM migration",
+      "depends_on": [
+        "TOP-006",
+        "GEO-002"
+      ],
+      "requirement": "Implement a temporary ScalaFIM TriangleMesh compatibility facade over TriangleTopology plus SurfaceRealization.",
+      "acceptance_criteria": [
+        "Legacy call sites can migrate incrementally.",
+        "The facade does not retain a second adjacency or identity authority.",
+        "VertexId and FaceId are deprecated with a documented replacement.",
+        "White, pial, inflated, and spherical surfaces can share one topology owner."
+      ]
+    },
+    {
+      "id": "INT-003",
+      "priority": "P0",
+      "artifact": "ScalaFIM migration",
+      "depends_on": [
+        "TOP-001"
+      ],
+      "requirement": "Replace ScalaFIM's parallel surface data algebra with locus4s structures.",
+      "acceptance_criteria": [
+        "Full SurfaceField delegates to Field without copying into a second owner hierarchy.",
+        "ROI support uses Region.",
+        "Ordered subsets use Selection.",
+        "Labels use PartialSurjection plus a parcel metadata Field.",
+        "Vertex mappings use the strongest applicable locus4s map and field pullback.",
+        "SurfaceLocusDomain no longer performs whole-field or whole-topology conversion."
+      ]
+    },
+    {
+      "id": "INT-004",
+      "priority": "P0",
+      "artifact": "ScalaFIM migration",
+      "depends_on": [
+        "GEO-001",
+        "GEO-007"
+      ],
+      "requirement": "Migrate surface rendering to packed coordinate output and an explicit normal-weighting policy.",
+      "acceptance_criteria": [
+        "The render compiler does not allocate one Point per vertex.",
+        "Normal weighting is named and tested.",
+        "The packed output checksum agrees with the compatibility implementation on valid fixtures."
+      ]
+    },
+    {
+      "id": "INT-005",
+      "priority": "P1",
+      "artifact": "ScalaFIM migration",
+      "depends_on": [
+        "GRF-001"
+      ],
+      "requirement": "Separate graph edge-path distance from future continuous surface geodesics.",
+      "acceptance_criteria": [
+        "The current Dijkstra operation is named EdgePathDistance or an equally explicit term.",
+        "No API labels an edge-weighted graph shortest path as an exact surface geodesic.",
+        "A future geodesic API can depend on PiecewiseEuclideanMetric without compatibility ambiguity."
+      ]
+    },
+    {
+      "id": "INT-006",
+      "priority": "P0",
+      "artifact": "release integration",
+      "depends_on": [
+        "GEO-003",
+        "GRF-001",
+        "INT-001",
+        "INT-002",
+        "INT-003",
+        "INT-004"
+      ],
+      "requirement": "Complete a representative neuroimaging vertical slice before the 0.1 release.",
+      "acceptance_criteria": [
+        "One topology owns white, pial, inflated, and spherical realizations.",
+        "Thickness and labels use locus4s fields over the shared vertex domain.",
+        "The renderer consumes packed coordinates.",
+        "One explicit graph projection is exercised.",
+        "One FreeSurfer or GIFTI fixture reaches strict construction directly or through explicit orientation."
+      ]
+    },
+    {
+      "id": "DOC-001",
+      "priority": "P0",
+      "artifact": "documentation",
+      "requirement": "Document the concrete multi-realization use case before explaining halfedge storage or persistence machinery.",
+      "acceptance_criteria": [
+        "The first executable guide builds one topology from coordinate rows and triangle rows.",
+        "The guide attaches at least two realizations and one vertex field.",
+        "The guide demonstrates compile-time rejection of a wrong cell kind or owner.",
+        "The guide explains boundary and orientation failures with runnable examples."
+      ]
+    },
+    {
+      "id": "DOC-002",
+      "priority": "P1",
+      "artifact": "documentation",
+      "requirement": "Publish explicit public contracts for ordering, complexity, allocation, identity, and numerical tolerance.",
+      "acceptance_criteria": [
+        "Users can distinguish guarantees from implementation details.",
+        "Every materializing convenience method documents its allocation behavior.",
+        "Every numerical certification names its tolerance policy.",
+        "Persistence documentation distinguishes owner identity, alignment, and isomorphism."
+      ]
+    },
+    {
+      "id": "DOC-003",
+      "priority": "P0",
+      "artifact": "documentation",
+      "depends_on": [
+        "SPT-001"
+      ],
+      "requirement": "Disambiguate spatial4s.Frame from the unrelated frame4s typed dataframe library at the first introduction of frames.",
+      "acceptance_criteria": [
+        "The README and first spatial4s-linked guide define Frame as a typed coordinate frame.",
+        "The same paragraph states that frame4s is a separate typed dataframe project.",
+        "Package names are shown in the first potentially ambiguous code example."
+      ]
+    }
+  ],
+  "nonfunctional_requirements": [
+    {
+      "id": "NFR-001",
+      "category": "correctness",
+      "requirement": "A successfully constructed TriangleTopology must satisfy all documented manifold and orientation laws without requiring defensive checks in ordinary queries."
+    },
+    {
+      "id": "NFR-002",
+      "category": "immutability",
+      "requirement": "Public mesh4s values are immutable. Builders may use private mutation but publish only fully validated immutable results."
+    },
+    {
+      "id": "NFR-003",
+      "category": "determinism",
+      "requirement": "Equivalent vertex counts and ordered triangle rows produce identical public cell ordinals, traversal materializations, and structural fingerprints across JVM and Scala.js; owner identity remains separate."
+    },
+    {
+      "id": "NFR-004",
+      "category": "performance",
+      "requirement": "Primitive local traversal performs work proportional to the visited incidence and does not allocate a typed cell object per visited cell."
+    },
+    {
+      "id": "NFR-005",
+      "category": "memory",
+      "requirement": "The optimized topology stores primitive arrays proportional to V, E, and F and does not retain duplicate adjacency or graph stores."
+    },
+    {
+      "id": "NFR-006",
+      "category": "cross_platform",
+      "requirement": "All 0.1 public artifacts except format-specific JVM codecs compile and test on JVM and Scala.js."
+    },
+    {
+      "id": "NFR-007",
+      "category": "dependency_hygiene",
+      "requirement": "The mesh4s release-artifact dependency graph has one finite-identity authority and one spatial frame authority."
+    },
+    {
+      "id": "NFR-008",
+      "category": "diagnostics",
+      "requirement": "Construction failures identify bounded concrete witnesses suitable for a codec error report or repair workflow."
+    },
+    {
+      "id": "NFR-009",
+      "category": "compatibility",
+      "requirement": "Compatibility facades may preserve source migration paths but cannot retain parallel identity, topology, field, or adjacency authorities."
+    },
+    {
+      "id": "NFR-010",
+      "category": "documentation",
+      "requirement": "All primary documentation examples compile as part of the build."
+    },
+    {
+      "id": "NFR-011",
+      "category": "continuous_integration",
+      "requirement": "Every pushed change runs the documented JVM, Scala.js, formatting, and documentation matrix before it can be treated as release evidence."
+    },
+    {
+      "id": "NFR-012",
+      "category": "binary_compatibility",
+      "requirement": "The published 0.1 artifacts establish the binary-compatibility baseline for subsequent compatible releases."
+    }
+  ],
+  "delivery_plan": [
+    {
+      "phase": "PH0",
+      "name": "Contract freeze and repository bootstrap",
+      "status": "not_started",
+      "requirements": [
+        "FND-001",
+        "FND-002",
+        "FND-003",
+        "FND-004",
+        "FND-005",
+        "SPT-001"
+      ],
+      "deliverables": [
+        "initialized mesh4s Git repository with the PRD committed before implementation",
+        "mesh4s build and CI skeleton",
+        "spatial4s repository and build skeleton",
+        "artifact dependency diagram",
+        "compile-only dependent-type API examples",
+        "frozen spatial4s Frame, Point, Vec, CoordinateUnit, and CoordinateConvention contract",
+        "topology record and indexing-scheme specification"
+      ],
+      "exit_criteria": [
+        "Representative public signatures compile on JVM and Scala.js.",
+        "No artifact dependency cycle exists.",
+        "The geometry authority and finite-domain authority are unambiguous.",
+        "Exact dependency-pin policy is documented.",
+        "The Scala version, CI matrix, sbt-typelevel policy, and post-0.1 MiMa baseline policy are recorded."
+      ]
+    },
+    {
+      "phase": "PH1A",
+      "name": "Spatial core implementation",
+      "status": "not_started",
+      "depends_on": [
+        "PH0"
+      ],
+      "parallel_with": [
+        "PH1B"
+      ],
+      "requirements": [
+        "SPT-004"
+      ],
+      "deliverables": [
+        "spatial4s-core",
+        "frame restoration and alignment laws"
+      ],
+      "exit_criteria": [
+        "The frozen PH0 spatial contract is implemented without incompatible changes.",
+        "JVM and Scala.js spatial identity tests pass.",
+        "mesh4s-geometry can resolve the exact spatial4s revision without depending on image4s or reframe4s."
+      ]
+    },
+    {
+      "phase": "PH1B",
+      "name": "Trusted topology construction",
+      "status": "not_started",
+      "depends_on": [
+        "PH0"
+      ],
+      "parallel_with": [
+        "PH1A"
+      ],
+      "requirements": [
+        "TOP-001",
+        "TOP-002",
+        "TOP-003",
+        "TOP-004",
+        "TOP-005",
+        "REF-001",
+        "LAW-001",
+        "LAW-003"
+      ],
+      "deliverables": [
+        "TriangleTable",
+        "TriangleTopology",
+        "bounded TopologyAudit",
+        "strict builder",
+        "primitive face-corner tables",
+        "independent topology oracle",
+        "initial valid and malformed generators"
+      ],
+      "exit_criteria": [
+        "Strict construction accepts the valid generator corpus.",
+        "Every malformed generator is rejected with the intended issue type.",
+        "Optimized and reference construction agree.",
+        "Ownership compile tests pass."
+      ]
+    },
+    {
+      "phase": "PH2",
+      "name": "Traversal, boundaries, and chain laws",
+      "status": "not_started",
+      "depends_on": [
+        "PH1B"
+      ],
+      "requirements": [
+        "TOP-006",
+        "TOP-007",
+        "TOP-008",
+        "TOP-009",
+        "TOP-010",
+        "TOP-011",
+        "LAW-002"
+      ],
+      "deliverables": [
+        "constant-time incidence queries",
+        "ordered vertex fans",
+        "boundary loops",
+        "components and topological summaries",
+        "signed chain incidence",
+        "explicit orienter",
+        "closed and connected evidence"
+      ],
+      "exit_criteria": [
+        "Face-cycle, opposite, manifold, boundary, and chain laws pass.",
+        "Boundary loops cover every boundary halfedge exactly once.",
+        "Primitive traversals agree with the independent oracle.",
+        "Orienter success and nonorientability witnesses are deterministic."
+      ]
+    },
+    {
+      "phase": "PH3",
+      "name": "Persistence and alignment",
+      "status": "not_started",
+      "depends_on": [
+        "PH2"
+      ],
+      "requirements": [
+        "ID-001",
+        "ID-002",
+        "ID-003",
+        "ID-004",
+        "ID-005",
+        "LAW-004"
+      ],
+      "deliverables": [
+        "versioned topology record",
+        "canonical fingerprint encoding",
+        "topology registry",
+        "exact topology alignment",
+        "persistence and groupoid law suites"
+      ],
+      "exit_criteria": [
+        "Record-restore-record is stable.",
+        "JVM and Scala.js fingerprints match golden vectors.",
+        "Same-registry restoration canonicalizes owners.",
+        "Independent-registry transport requires and succeeds through alignment.",
+        "Changed incidence is rejected."
+      ]
+    },
+    {
+      "phase": "PH4",
+      "name": "Realizations and intrinsic metrics",
+      "status": "not_started",
+      "depends_on": [
+        "PH1A",
+        "PH2"
+      ],
+      "requirements": [
+        "GEO-001",
+        "GEO-002",
+        "GEO-003",
+        "GEO-004",
+        "GEO-005",
+        "GEO-006",
+        "GEO-007",
+        "REF-002",
+        "LAW-005"
+      ],
+      "deliverables": [
+        "packed PointField",
+        "SurfaceRealization",
+        "PiecewiseEuclideanMetric",
+        "nondegeneracy evidence",
+        "basic geometry",
+        "independent geometry oracle"
+      ],
+      "exit_criteria": [
+        "Multiple realizations share one topology and its fields.",
+        "Primitive coordinate traversal allocates no Point per vertex.",
+        "Rigid-motion and metric laws pass.",
+        "Optimized geometry agrees with the independent oracle.",
+        "All numerical tolerances and units are explicit."
+      ]
+    },
+    {
+      "phase": "PH5",
+      "name": "Graph projection and ScalaFIM vertical slice",
+      "status": "not_started",
+      "depends_on": [
+        "PH3",
+        "PH4"
+      ],
+      "requirements": [
+        "GRF-001",
+        "GRF-002",
+        "GRF-003",
+        "INT-001",
+        "INT-002",
+        "INT-003",
+        "INT-004",
+        "INT-005",
+        "INT-006",
+        "LAW-006"
+      ],
+      "deliverables": [
+        "mesh4s-graph4s",
+        "ScalaFIM fixture-admission report",
+        "temporary surface facade",
+        "locus4s-native surface fields and mappings",
+        "packed rendering path",
+        "representative cortical-surface workflow"
+      ],
+      "exit_criteria": [
+        "Primal and dual projection laws pass.",
+        "Malformed legacy fixtures are corrected, explicitly oriented, replaced, or reclassified.",
+        "The representative cortical workflow passes without a parallel surface identity or field hierarchy.",
+        "Every mesh realization in the vertical slice uses spatial4s.Frame; image4s and reframe4s migration is not required for this gate."
+      ]
+    },
+    {
+      "phase": "PH6",
+      "name": "Documentation and release certification",
+      "status": "not_started",
+      "depends_on": [
+        "PH5"
+      ],
+      "requirements": [
+        "DOC-001",
+        "DOC-002",
+        "DOC-003"
+      ],
+      "deliverables": [
+        "task-first README",
+        "executable guides",
+        "API reference",
+        "fresh-checkout evidence",
+        "JVM and Scala.js verification report",
+        "performance and allocation report",
+        "0.1 release notes"
+      ],
+      "exit_criteria": [
+        "All release gates are satisfied or explicitly documented as blockers.",
+        "The exact pushed dependency revisions build from fresh checkouts.",
+        "The ScalaFIM vertical slice passes against the release candidate.",
+        "The documentation examples compile and render.",
+        "The first discussion of Frame distinguishes spatial4s from frame4s."
+      ]
+    }
+  ],
+  "verification_plan": {
+    "correctness_suites": [
+      "Ownership and cell-kind compile tests.",
+      "Face next/previous cycle laws.",
+      "Opposite partial-involution and endpoint-reversal laws.",
+      "Manifold vertex-link and boundary-loop laws.",
+      "Exact chain boundary-composition law.",
+      "Orientation-reversal laws when the operation is introduced.",
+      "Metric positivity, triangle-inequality, and realization-agreement laws.",
+      "Persistence round-trip and topology-alignment groupoid laws.",
+      "Primal and dual graph correspondence laws.",
+      "Optimized versus independent-reference comparison."
+    ],
+    "fixture_matrix": {
+      "valid": [
+        "single triangle disk",
+        "multi-triangle disk",
+        "annulus",
+        "closed tetrahedral sphere with consistent orientation",
+        "larger sphere",
+        "torus",
+        "disconnected union",
+        "surface with multiple boundary components"
+      ],
+      "invalid": [
+        "out-of-range vertex",
+        "repeated face vertex",
+        "rotated duplicate face",
+        "reversed duplicate face",
+        "edge with three incident faces",
+        "same-direction shared edge",
+        "bow-tie vertex",
+        "unused vertex",
+        "nonorientable parity cycle",
+        "addressability overflow"
+      ]
+    },
+    "performance_courts": [
+      {
+        "court": "primitive traversal allocation",
+        "platform": "JVM",
+        "criterion": "Visited cell count may grow while typed cell-wrapper allocation remains constant or absent after warmup."
+      },
+      {
+        "court": "primitive traversal lowering",
+        "platform": "Scala.js FullOpt",
+        "criterion": "Matched traversal checksums and generated-code inspection show no cell-object construction in the hot loop."
+      },
+      {
+        "court": "construction scaling",
+        "platform": "JVM and Scala.js",
+        "criterion": "Construction and full traversal scale linearly over matched 1x, 2x, and 4x generated meshes."
+      },
+      {
+        "court": "packed coordinate consumption",
+        "platform": "JVM and Scala.js",
+        "criterion": "Renderer and export kernels consume primitive coordinates without materializing a full Point collection."
+      },
+      {
+        "court": "memory model",
+        "platform": "JVM",
+        "criterion": "Observed retained topology storage is consistent with the documented primitive-array formula and contains no duplicate graph adjacency store."
+      }
+    ],
+    "fresh_checkout_gates": [
+      "Formatting check.",
+      "JVM compile and test.",
+      "Scala.js compile, test, and full link.",
+      "Documentation compilation.",
+      "Golden fingerprint comparison.",
+      "Representative ScalaFIM consumer build.",
+      "Remote dependency revision verification."
+    ]
+  },
+  "release_criteria": [
+    {
+      "id": "RC-001",
+      "criterion": "All P0 requirements are complete."
+    },
+    {
+      "id": "RC-002",
+      "criterion": "Every P1 functional requirement is complete or explicitly removed from the 0.1 scope through a recorded PRD revision."
+    },
+    {
+      "id": "RC-003",
+      "criterion": "The trusted topology passes the full valid and malformed generator court against the independent reference implementation."
+    },
+    {
+      "id": "RC-004",
+      "criterion": "JVM and Scala.js agree on deterministic ordinals, traversal checksums, record round trips, and fingerprint golden vectors."
+    },
+    {
+      "id": "RC-005",
+      "criterion": "Primitive incidence and coordinate traversal meet the allocation and scaling courts."
+    },
+    {
+      "id": "RC-006",
+      "criterion": "The ScalaFIM multi-realization vertical slice passes without a second public surface identity, field, or adjacency hierarchy."
+    },
+    {
+      "id": "RC-007",
+      "criterion": "Fresh checkouts resolve and build the exact dependency revisions without relying on unpublished sibling-directory state."
+    },
+    {
+      "id": "RC-008",
+      "criterion": "The README begins with a runnable triangle-row and multiple-realization workflow, distinguishes spatial4s.Frame from frame4s, and all documentation examples compile."
+    },
+    {
+      "id": "RC-009",
+      "criterion": "The CI matrix is green for formatting, JVM, Scala.js, FullOpt linking, and documentation, and the post-0.1 MiMa baseline policy is configured."
+    }
+  ],
+  "migration_plan": {
+    "scalafim_target_boundary": {
+      "mesh4s_owns": [
+        "oriented triangular incidence",
+        "cell domains and topology identity",
+        "surface realizations",
+        "intrinsic metrics",
+        "basic geometry",
+        "optional graph projections"
+      ],
+      "scalafim_owns": [
+        "hemisphere and surface kind",
+        "subject and template identity",
+        "cortical surface families",
+        "atlas and fragmented-parcel policy",
+        "volume-to-surface sampling",
+        "morphism routing and provenance",
+        "neuroimaging workflow policy"
+      ]
+    },
+    "concept_mapping": [
+      {
+        "from": "VertexId",
+        "to": "Index[topology.Vertex]"
+      },
+      {
+        "from": "FaceId",
+        "to": "Index[topology.Face]"
+      },
+      {
+        "from": "SurfaceField[A]",
+        "to": "Field[topology.Vertex, A]"
+      },
+      {
+        "from": "SurfaceRoi",
+        "to": "Region[topology.Vertex]"
+      },
+      {
+        "from": "ordered surface subset",
+        "to": "Selection[topology.Vertex]"
+      },
+      {
+        "from": "labeled surface with background",
+        "to": "PartialSurjection[topology.Vertex, Parcel] plus Field[Parcel, LabelInfo]"
+      },
+      {
+        "from": "SurfaceVertexMapping",
+        "to": "the strongest applicable locus4s TotalMap, Bijection, Injection, or Surjection"
+      },
+      {
+        "from": "SurfaceMeshDomain compatibility by face arrays",
+        "to": "shared TriangleTopology owner or explicit TopologyAlignment"
+      },
+      {
+        "from": "MeshTopology.toGraph",
+        "to": "mesh4s-graph4s named projection"
+      },
+      {
+        "from": "Dijkstra Geodesic",
+        "to": "EdgePathDistance"
+      }
+    ],
+    "admission_actions": [
+      "Run TopologyAudit over every literal mesh fixture.",
+      "Run TopologyAudit over representative FreeSurfer and GIFTI decoder output.",
+      "Correct inconsistent winding or use orientAndBuild with an asserted flip field.",
+      "Move bow-tie adjacency fixtures to graph tests or replace them with valid surface fixtures.",
+      "Retain raw decoder records for data that cannot enter the trusted topology."
+    ],
+    "non_blocking_ecosystem_follow_ups": [
+      {
+        "id": "EXT-SPT-002",
+        "depends_on": [
+          "SPT-004"
+        ],
+        "repository": "image4s",
+        "outcome": "image4s uses or re-exports spatial4s coordinate frames while retaining grid-specific identity and sampling semantics.",
+        "evidence_gate": "An image-grid and mesh-frame interoperability example compiles and runs.",
+        "release_blocking_for_mesh4s_0_1": false
+      },
+      {
+        "id": "EXT-SPT-003",
+        "depends_on": [
+          "SPT-004"
+        ],
+        "repository": "reframe4s",
+        "outcome": "reframe4s imports spatial4s directly and can transform mesh realizations without an image4s-owned Frame type.",
+        "evidence_gate": "A typed image-frame to surface-frame transformation example compiles and runs.",
+        "release_blocking_for_mesh4s_0_1": false
+      }
+    ]
+  },
+  "risks": [
+    {
+      "id": "R-001",
+      "risk": "The spatial4s extraction expands into a long cross-repository migration and delays geometry.",
+      "probability": "high",
+      "impact": "high",
+      "mitigation": "Run topology and spatial work as parallel lanes. Freeze and implement only the minimal spatial4s contract required by mesh4s-geometry. Track image4s and reframe4s migrations as non-blocking work in their own repositories.",
+      "trigger": "PH1A cannot produce a compiling shared contract while PH1B is otherwise ready."
+    },
+    {
+      "id": "R-002",
+      "risk": "Published or pinned dependency revisions do not contain the inspected local contracts.",
+      "probability": "high",
+      "impact": "high",
+      "mitigation": "Use exact immutable revisions, record local overrides, and require a fresh-checkout dependency court before integration and release claims.",
+      "trigger": "A clean checkout fails to compile without a sibling working tree."
+    },
+    {
+      "id": "R-003",
+      "risk": "Path-dependent Scala types make ordinary APIs difficult to use or produce JVM erasure conflicts.",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Complete compile-only API spikes before storage implementation. Prefer stable topology paths, local aliases, and distinct method names.",
+      "trigger": "Examples require public type projections or explicit V, E, F, and H parameters."
+    },
+    {
+      "id": "R-004",
+      "risk": "Strict manifold construction rejects a significant portion of existing ScalaFIM fixtures or external files.",
+      "probability": "high",
+      "impact": "medium",
+      "mitigation": "Keep TriangleTable and inspect available, implement explicit orientation early, and distinguish malformed surface data from graph-only test fixtures.",
+      "trigger": "Admission auditing shows widespread nonmanifold data rather than isolated winding problems."
+    },
+    {
+      "id": "R-005",
+      "risk": "Diagnostic accumulation consumes excessive memory on hostile files.",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Make issue limits and bounded witness sets part of the first audit implementation.",
+      "trigger": "Diagnostic memory grows with the total number of malformed rows after reaching the configured issue limit."
+    },
+    {
+      "id": "R-006",
+      "risk": "Point convenience APIs leak allocations into renderers and numerical kernels.",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Design primitive PointField access before SurfaceRealization and gate the ScalaFIM renderer on allocation evidence.",
+      "trigger": "Hot-loop profiles show Point or Vec construction proportional to vertex or face count."
+    },
+    {
+      "id": "R-007",
+      "risk": "Fingerprint or derived-cell identity rules change after data has been persisted.",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Version the byte encoding and indexing scheme from the first release and maintain golden vectors.",
+      "trigger": "A code change alters record bytes or cell ordinals without an explicit schema-version change."
+    },
+    {
+      "id": "R-008",
+      "risk": "Graph-weighted operations are mistaken for intrinsic surface algorithms.",
+      "probability": "medium",
+      "impact": "medium",
+      "mitigation": "Use explicit topology-only, metric-weighted, edge-path, FEM, and DEC names. Keep stiffness and mass structures out of the graph projection API.",
+      "trigger": "An API or example calls graph shortest-path distance a surface geodesic or graph spectral decomposition a surface Laplace-Beltrami method."
+    }
+  ],
+  "open_decisions": [
+    {
+      "id": "O-001",
+      "decision": "Select the Maven organization, artifact names, GitHub account, and publication repository.",
+      "blocking_phase": "PH0",
+      "recommended_resolution": "Verify the checkout-specific publication identity rather than copying another repository's settings."
+    },
+    {
+      "id": "O-002",
+      "decision": "Choose the exact locus4s revision that defines the 0.1 ownership and Field contract.",
+      "blocking_phase": "PH1B",
+      "recommended_resolution": "Select a committed revision containing the reviewed foundation API and prove it through a fresh-checkout JVM and Scala.js build."
+    },
+    {
+      "id": "O-003",
+      "decision": "Finalize the open representation of CoordinateUnit and CoordinateConvention.",
+      "blocking_phase": "PH0",
+      "recommended_resolution": "Support standard length units plus dimensionless and validated custom identifiers; do not use a closed enum that excludes spherical, inflated, or surface-specific frames."
+    },
+    {
+      "id": "O-004",
+      "decision": "Finalize PointField storage extension points and float-versus-double construction policies.",
+      "blocking_phase": "PH4",
+      "recommended_resolution": "Expose semantic Double access, provide packed float and double stores, and require constructors to state whether they copy or own the supplied storage."
+    },
+    {
+      "id": "O-005",
+      "decision": "Select the first format fixture for the release vertical slice.",
+      "blocking_phase": "PH5",
+      "recommended_resolution": "Use one small FreeSurfer or GIFTI fixture whose topology, coordinates, orientation report, and expected field values can be checked into the test suite."
+    }
+  ],
+  "deferred_backlog": [
+    {
+      "item": "compactAndBuild with exact old/new vertex maps",
+      "target": "0.2 or codec-driven milestone"
+    },
+    {
+      "item": "explicit topology isomorphism validation and reindexing results",
+      "target": "after persistence and alignment stabilize"
+    },
+    {
+      "item": "format-specific FreeSurfer and GIFTI artifacts",
+      "target": "after the raw-record and strict-construction contracts stabilize"
+    },
+    {
+      "item": "surface spatial indexing and closest-point queries",
+      "target": "after basic realization geometry stabilizes"
+    },
+    {
+      "item": "DEC and FEM operator assembly",
+      "target": "after chain incidence and PiecewiseEuclideanMetric stabilize"
+    },
+    {
+      "item": "geodesic algorithm suite",
+      "target": "after intrinsic metric and numerical operator policies stabilize"
+    },
+    {
+      "item": "topology editing, subdivision, collapse, and remeshing",
+      "target": "after operation-specific correspondence result types are designed"
+    },
+    {
+      "item": "embedded-surface and self-intersection certification",
+      "target": "after a spatial-index policy is available"
+    },
+    {
+      "item": "generic locus4s-ravel DomainArray for vertex-by-time and vertex-by-feature data",
+      "target": "separate ecosystem project; not a mesh4s blocker"
+    },
+    {
+      "item": "zero-copy graph4s algorithms over a read-only mesh adjacency capability",
+      "target": "graph4s optimization after projection semantics are proven"
+    }
+  ],
+  "authoritative_references": [
+    {
+      "title": "Geometry Central surface mesh basics",
+      "url": "https://geometry-central.net/surface/surface_mesh/basics/",
+      "use": "Manifold-oriented topology distinctions and halfedge navigation."
+    },
+    {
+      "title": "Geometry Central boundary conventions",
+      "url": "https://geometry-central.net/surface/surface_mesh/boundaries/",
+      "use": "Comparison with exterior-halfedge boundary representations."
+    },
+    {
+      "title": "Geometry Central geometry hierarchy",
+      "url": "https://geometry-central.net/surface/geometry/geometry/",
+      "use": "Separation of topology, vertex-position geometry, and intrinsic edge-length geometry."
+    },
+    {
+      "title": "CGAL Surface_mesh",
+      "url": "https://doc.cgal.org/latest/Surface_mesh/index.html",
+      "use": "Typed mesh-cell indices and halfedge prior art."
+    },
+    {
+      "title": "FreeSurfer surface registration and templates",
+      "url": "https://surfer.nmr.mgh.harvard.edu/fswiki/SurfaceRegAndTemplates",
+      "use": "Evidence for multiple coordinate realizations sharing one vertex topology."
+    },
+    {
+      "title": "libigl discrete differential geometry tutorial",
+      "url": "https://libigl.github.io/libigl-python-bindings/tut-chapter2/",
+      "use": "Evidence that surface spectral discretizations retain stiffness and mass operators rather than collapsing to an ordinary graph eigenproblem."
+    }
+  ]
+}

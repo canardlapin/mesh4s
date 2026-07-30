@@ -1,0 +1,1 @@
+{"actor":"codex-mesh4s","entity":"bd-01KYST0QYV9RJG7E58F62A3K3H","kind":"note","note_kind":"progress","op":"20260730T152954.711052Z-p5829-c0003-r8975-hf2d196","text":"Starting PH0: commit the reviewed PRD and tracker, then bootstrap the Scala 3.7.4 JVM/Scala.js build, CI, dependency graph, and compile-only topology contract.","ts":"2026-07-30T15:29:54.711052Z","v":1}

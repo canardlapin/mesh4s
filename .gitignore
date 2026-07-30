@@ -1,0 +1,13 @@
+.bloop/
+.bsp/
+.idea/
+.metals/
+.vscode/
+.DS_Store
+
+target/
+**/target/
+project/project/
+
+.mote/local/
+.mote/tmp/
