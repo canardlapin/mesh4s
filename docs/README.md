@@ -96,4 +96,5 @@ Continue with:
 - [Graph projections](concepts/graph-projections.md)
 - [Spatial coordinate frames](concepts/spatial-frames.md)
 - [Topology records and deterministic indexing](reference/topology-record-and-indexing.md)
+- [Performance, identity, and tolerance contracts](reference/performance-identity-and-tolerance.md)
 - [Build and compatibility policy](reference/build-and-compatibility.md)
