@@ -1,0 +1,14 @@
+consumer	dependency	status
+mesh4s-core	locus4s-core	active
+mesh4s-core	locus4s-data	active
+mesh4s-geometry	mesh4s-core	active
+mesh4s-geometry	spatial4s-core	PH1A
+mesh4s-reference	mesh4s-core	active
+mesh4s-reference	mesh4s-geometry	active
+mesh4s-laws	mesh4s-core	active
+mesh4s-laws	mesh4s-geometry	active
+mesh4s-laws	mesh4s-reference	active
+mesh4s-graph4s	mesh4s-core	active
+mesh4s-graph4s	mesh4s-geometry	active
+mesh4s-graph4s	graph4s-core	active
+mesh4s-graph4s	graph4s-indexed	active

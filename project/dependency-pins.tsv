@@ -1,0 +1,4 @@
+dependency	revision	default_source	local_override	status
+locus4s	af063d7fcf2d0d48aed5474c9c9a41376e18531f	https://github.com/canardlapin/locus4s.git	mesh4s.locus4s.build	active
+graph4s	ea5d2d762f85f5a0f97ee188deb5fac0ef2bcbaf	https://github.com/canardlapin/graph4s.git	mesh4s.graph4s.build	active
+spatial4s	PENDING_PH1A	https://github.com/canardlapin/spatial4s.git	mesh4s.spatial4s.build	blocked_until_spatial4s_core_exists
