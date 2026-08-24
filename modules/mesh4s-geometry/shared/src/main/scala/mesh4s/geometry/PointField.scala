@@ -161,7 +161,7 @@ object PointField:
   )(using
       dimension: Dimension[D]
   ): Either[PointFieldError, PointField[S, D, Frame[D]]] =
-    validate(space.size, dimension.rank, coordinates.iterator.map(identity)).map: _ =>
+    validateDoubles(space.size, dimension.rank, coordinates).map: _ =>
       new DoublePointField[S, D, Frame[D]](
         space,
         frame,
@@ -175,37 +175,51 @@ object PointField:
   )(using
       dimension: Dimension[D]
   ): Either[PointFieldError, PointField[S, D, Frame[D]]] =
-    validate(
-      space.size,
-      dimension.rank,
-      coordinates.iterator.map(_.toDouble)
-    ).map: _ =>
+    validateFloats(space.size, dimension.rank, coordinates).map: _ =>
       new FloatPointField[S, D, Frame[D]](
         space,
         frame,
         coordinates.clone()
       )
 
-  private def validate(
+  private def validateDoubles(
       size: Int,
       rank: Int,
-      coordinates: Iterator[Double]
+      coordinates: Array[Double]
   ): Either[PointFieldError, Unit] =
-    val values = coordinates.toVector
     val expected = size * rank
-    if values.length != expected then
-      Left(PointFieldError.CoordinateCountMismatch(expected, values.length))
+    if coordinates.length != expected then
+      Left(PointFieldError.CoordinateCountMismatch(expected, coordinates.length))
     else
-      values.zipWithIndex.find((value, _) => !value.isFinite) match
-        case Some((value, offset)) =>
-          Left(
-            PointFieldError.NonFiniteCoordinate(
-              offset / rank,
-              offset % rank,
-              value
-            )
-          )
-        case None => Right(())
+      var offset = 0
+      while offset < coordinates.length && coordinates(offset).isFinite do offset += 1
+      if offset == coordinates.length then Right(())
+      else Left(nonFinite(rank, offset, coordinates(offset)))
+
+  private def validateFloats(
+      size: Int,
+      rank: Int,
+      coordinates: Array[Float]
+  ): Either[PointFieldError, Unit] =
+    val expected = size * rank
+    if coordinates.length != expected then
+      Left(PointFieldError.CoordinateCountMismatch(expected, coordinates.length))
+    else
+      var offset = 0
+      while offset < coordinates.length && coordinates(offset).isFinite do offset += 1
+      if offset == coordinates.length then Right(())
+      else Left(nonFinite(rank, offset, coordinates(offset).toDouble))
+
+  private def nonFinite(
+      rank: Int,
+      offset: Int,
+      value: Double
+  ): PointFieldError =
+    PointFieldError.NonFiniteCoordinate(
+      offset / rank,
+      offset % rank,
+      value
+    )
 
   private def view[S, D <: Dim, F <: Frame[D]](
       space: FiniteDomain[S],
