@@ -7,6 +7,42 @@ import spatial4s.D3
 import spatial4s.Frame
 
 final class PointFieldAllocationCourtSuite extends munit.FunSuite:
+  test("packed D3 construction allocates only its defensive primitive copy"):
+    val packed =
+      FiniteDomain
+        .ephemeral("point-field-construction-allocation", 100_000)
+        .fold(error => fail(error.message), identity)
+    val domain = packed.value
+    val frame =
+      Frame
+        .named[D3]("construction-allocation-frame")
+        .fold(
+          error => fail(error.message),
+          identity
+        )
+    val coordinates =
+      Array.tabulate(domain.size * 3)(offset => (offset % 101).toDouble)
+
+    var warmup = 0
+    while warmup < 20 do
+      PointField
+        .fromInterleavedDoubles(domain, frame, coordinates)
+        .fold(error => fail(error.message), identity)
+      warmup += 1
+
+    var field: PointField[packed.S, D3, Frame[D3]] | Null = null
+    val allocated = allocatedBytes:
+      field = PointField
+        .fromInterleavedDoubles(domain, frame, coordinates)
+        .fold(error => fail(error.message), identity)
+
+    assert(field != null)
+    val primitivePayload = coordinates.length.toLong * java.lang.Double.BYTES.toLong
+    assert(
+      allocated <= primitivePayload + 131_072L,
+      s"packed D3 construction allocated $allocated bytes for a $primitivePayload-byte primitive payload"
+    )
+
   test("primitive D3 traversal allocates no point per vertex"):
     val packed =
       FiniteDomain
