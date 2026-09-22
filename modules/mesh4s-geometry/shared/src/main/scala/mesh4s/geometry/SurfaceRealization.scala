@@ -74,7 +74,7 @@ final class SurfaceRealization[
     T <: TriangleTopology,
     D <: Dim,
     F <: Frame[D]
-] private (
+] private[geometry] (
     val topology: T,
     val positions: PointField[topology.Vertex, D, F]
 )(using val dimension: Dimension[D]):

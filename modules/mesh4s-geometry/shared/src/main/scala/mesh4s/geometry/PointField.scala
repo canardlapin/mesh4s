@@ -95,7 +95,12 @@ sealed abstract class PointField[
       ordinal += 1
 
   final def interleavedDoubles: Array[Double] =
-    Array.tabulate(space.size * dimension.rank)(valueAtOffset)
+    val result = new Array[Double](space.size * dimension.rank)
+    var offset = 0
+    while offset < result.length do
+      result(offset) = valueAtOffset(offset)
+      offset += 1
+    result
 
   def interleavedFloats: Array[Float]
 
@@ -154,6 +159,14 @@ private final class ReboundPointField[
     source.interleavedFloats
 
 object PointField:
+  /** Takes exclusive ownership of a finite buffer produced inside geometry. */
+  private[geometry] def fromOwnedFiniteDoubles[S, D <: Dim, F <: Frame[D]](
+      space: FiniteDomain[S],
+      frame: F,
+      coordinates: Array[Double]
+  )(using Dimension[D]): PointField[S, D, F] =
+    new DoublePointField(space, frame, coordinates)
+
   def fromInterleavedDoubles[S, D <: Dim](
       space: FiniteDomain[S],
       frame: Frame[D],
