@@ -11,11 +11,11 @@ val munitCheckV = "1.3.0"
 val scalaCheckV = "1.19.0"
 
 lazy val locus4sRevision =
-  "abafedbb135f3b8c0ca7b63ae9095643827ecd7d"
+  "e32b0aeba5c4d19c457b2329272b95b26c061943"
 lazy val graph4sRevision =
-  "ea5d2d762f85f5a0f97ee188deb5fac0ef2bcbaf"
+  "6a72b58b564933234768f025e67228736ef2f7c5"
 lazy val spatial4sRevision =
-  "1b98abb873543f90a1e532e1a67f39e16c1ba09d"
+  "77037a7e6ced044b92d0a70b713c0a32a94f680d"
 
 def sourceBuild(
     property: String,
@@ -212,8 +212,8 @@ lazy val root =
       publish / skip := true
     )
 
-addCommandAlias("compileAll", ";root/compile")
-addCommandAlias("testAll", ";root/test")
+addCommandAlias("mesh4sCompileAll", ";root/compile")
+addCommandAlias("mesh4sTestAll", ";root/test")
 addCommandAlias(
   "testFullOptJS",
   ";set Global / scalaJSStage := FullOptStage;" +
@@ -224,8 +224,8 @@ addCommandAlias(
     "mesh4s-graph4sJS/test"
 )
 addCommandAlias(
-  "checkAll",
-  ";scalafmtCheckAll;scalafmtSbtCheck;dependencyPins;compileAll;testAll"
+  "mesh4sCheckAll",
+  ";scalafmtCheckAll;scalafmtSbtCheck;dependencyPins;mesh4sCompileAll;mesh4sTestAll"
 )
 addCommandAlias(
   "docsCheck",

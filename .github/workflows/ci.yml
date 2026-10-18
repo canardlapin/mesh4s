@@ -22,7 +22,7 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: sbt
       - uses: sbt/setup-sbt@v1
-      - run: sbt -J-Xmx4G checkAll
+      - run: sbt -J-Xmx4G mesh4sCheckAll
 
   scalajs-fullopt:
     runs-on: ubuntu-latest

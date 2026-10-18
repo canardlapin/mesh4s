@@ -20,7 +20,7 @@ compatibility exclusion after that release requires a repository rationale.
 The primary verification commands are:
 
 ```text
-sbt checkAll
+sbt mesh4sCheckAll
 sbt testFullOptJS
 sbt docsCheck
 ```
