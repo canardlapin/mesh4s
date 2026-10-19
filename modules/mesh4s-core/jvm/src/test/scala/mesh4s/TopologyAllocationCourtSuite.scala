@@ -28,6 +28,27 @@ final class TopologyAllocationCourtSuite extends munit.FunSuite:
       s"primitive neighbor traversal allocated $allocated bytes"
     )
 
+  test("packed face reads allocate nothing"):
+    val topology = grid(128, 128)
+    var checksum = 0L
+    def scan(): Unit =
+      val faces = topology.packedFaces
+      var offset = 0
+      while offset < faces.length do
+        checksum += faces(offset)
+        offset += 1
+    var warmup = 0
+    while warmup < 50 do
+      scan()
+      warmup += 1
+    val allocated = allocatedBytes:
+      var pass = 0
+      while pass < 20 do
+        scan()
+        pass += 1
+    assert(checksum > 0L)
+    assert(allocated <= 4_096L, s"packed face reads allocated $allocated bytes")
+
   private def traverseNeighbors(
       topology: TriangleTopology,
       consume: Index[topology.Vertex] => Unit

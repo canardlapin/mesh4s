@@ -46,6 +46,12 @@ sealed abstract class PointField[
 
   private[geometry] def valueAtOffset(offset: Int): Double
 
+  /** The coordinate at `offset` in point-major packed order (`point * rank + axis`), read
+    * without allocation. The caller keeps `offset` within `size * rank`.
+    */
+  final def packedValue(offset: Int): Double =
+    valueAtOffset(offset)
+
   final def coordinate(index: Index[S], axis: Int): Option[Double] =
     if axis >= 0 && axis < dimension.rank then
       Some(valueAtOffset(index.ordinal * dimension.rank + axis))

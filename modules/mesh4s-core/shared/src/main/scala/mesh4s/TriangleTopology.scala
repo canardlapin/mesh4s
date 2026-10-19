@@ -80,12 +80,17 @@ sealed abstract class TriangleTopology:
 
   /** Structural digest with no owner or persistent-identity authority. */
   def connectivityFingerprint: TopologyFingerprint =
-    TopologyFingerprint.compute(vertices.size, faceVertexOrdinals)
+    TopologyFingerprint.compute(vertices.size, packedFaces)
 
   /** Explicit O(F) comparison of vertex count and ordered triangle rows. */
   def sameConnectivity(that: TriangleTopology): Boolean =
     vertices.size == that.vertices.size &&
-      faceVertexOrdinals.sameElements(that.faceVertexOrdinals)
+      packedFaces.sameElements(that.packedFaces)
+
+  /** Face-major triangle corners as vertex ordinals: face `f` is `(3f, 3f + 1, 3f + 2)` in
+    * admitted orientation. A read-only view of the topology's own storage; no copy is made.
+    */
+  def packedFaces: IArray[Int]
 
   def toRecord(
       topologyKey: TopologyKey,
@@ -381,6 +386,9 @@ private final class PackedTopology[V, E, F, H](
 
   private[mesh4s] def faceVertexOrdinals: Array[Int] =
     faceVertices.clone()
+
+  def packedFaces: IArray[Int] =
+    IArray.unsafeFromArray(faceVertices)
 
   private[mesh4s] def oppositeOrdinals: Array[Int] =
     opposites.clone()

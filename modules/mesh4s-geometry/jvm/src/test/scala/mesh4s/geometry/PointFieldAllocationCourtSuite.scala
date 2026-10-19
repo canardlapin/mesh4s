@@ -7,6 +7,39 @@ import spatial4s.D3
 import spatial4s.Frame
 
 final class PointFieldAllocationCourtSuite extends munit.FunSuite:
+  test("packed value reads allocate nothing and match interleaved coordinates"):
+    val packed =
+      FiniteDomain
+        .ephemeral("point-field-packed-read", 10_000)
+        .fold(error => fail(error.message), identity)
+    val frame =
+      Frame.named[D3]("packed-read-frame").fold(error => fail(error.message), identity)
+    val coordinates =
+      Array.tabulate(packed.value.size * 3)(offset => (offset % 97).toDouble)
+    val field =
+      PointField
+        .fromInterleavedDoubles(packed.value, frame, coordinates)
+        .fold(error => fail(error.message), identity)
+    var sum = 0.0
+    def scan(): Unit =
+      var offset = 0
+      while offset < coordinates.length do
+        sum += field.packedValue(offset)
+        offset += 1
+    var warmup = 0
+    while warmup < 50 do
+      scan()
+      warmup += 1
+    sum = 0.0
+    val allocated = allocatedBytes:
+      scan()
+    assertEqualsDouble(sum, coordinates.sum, 0.0)
+    assert(allocated <= 4_096L, s"packed value reads allocated $allocated bytes")
+    assertEquals(
+      (0 until coordinates.length).map(field.packedValue).toVector,
+      field.interleavedDoubles.toVector
+    )
+
   test("packed D3 construction allocates only its defensive primitive copy"):
     val packed =
       FiniteDomain

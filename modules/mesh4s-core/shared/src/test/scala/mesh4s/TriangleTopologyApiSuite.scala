@@ -73,3 +73,19 @@ def misuse(topology: TriangleTopology, grid: ImageGrid)(
     )
 
     assert(errors.nonEmpty)
+
+  test("packed faces expose the admitted triangle rows without copying"):
+    val rows = Vector(Triangle(0, 1, 2), Triangle(0, 2, 3))
+    val topology =
+      TriangleTopology
+        .fromOrdinalFaces(4, rows)
+        .fold(audit => fail(audit.message), identity)
+    val packed = topology.packedFaces
+    assertEquals(packed.toVector, rows.flatMap(_.toVector))
+    assert(packed.asInstanceOf[AnyRef] eq topology.packedFaces.asInstanceOf[AnyRef])
+    val same =
+      TriangleTopology
+        .fromOrdinalFaces(4, rows)
+        .fold(audit => fail(audit.message), identity)
+    assert(topology.sameConnectivity(same))
+    assertEquals(topology.connectivityFingerprint, same.connectivityFingerprint)
