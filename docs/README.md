@@ -99,3 +99,26 @@ Continue with:
 - [Topology records and deterministic indexing](reference/topology-record-and-indexing.md)
 - [Performance, identity, and tolerance contracts](reference/performance-identity-and-tolerance.md)
 - [Build and compatibility policy](reference/build-and-compatibility.md)
+
+## Spatial lookup and spheres
+
+`NearestVertexIndex` searches a `PointField` with branch-and-bound Euclidean
+bounds, returns an index in that exact vertex domain, and resolves equal
+distances by the lowest ordinal. Empty domains return `None`. Queries use the
+index's frame; topology sharing does not align distinct coordinate charts.
+
+`RadialFaceIndex.create` requires explicit nondegeneracy admission and never
+repairs, drops, reorients, or renumbers faces. Its hierarchy follows the whole
+positive origin-to-query ray, including when the query lies far beyond the
+surface. The query direction is normalized by its maximum absolute component,
+so its distance from the origin does not change admission. A zero direction
+returns no hit; normalized determinants below 1e-15 are refused. It chooses the hit with greatest minimum barycentric weight, then
+lowest face ordinal. Boundary weights down to -1e-6 are clamped and normalized;
+the bounding boxes include that tolerance envelope. This is radial
+interpolation geometry, not a nearest-face or first-visible-surface API.
+
+`SphereGeometry` checks origin-centered spherical coordinates and projects to
+an explicit radius in the existing frame's coordinate unit. The caller supplies
+the admission tolerance. The output retains the exact vertex domain and frame;
+inputs remain immutable. Mesh templates, hemisphere labels, neuroimaging
+registration, and conventional radii belong downstream.
