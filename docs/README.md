@@ -122,3 +122,11 @@ an explicit radius in the existing frame's coordinate unit. The caller supplies
 the admission tolerance. The output retains the exact vertex domain and frame;
 inputs remain immutable. Mesh templates, hemisphere labels, neuroimaging
 registration, and conventional radii belong downstream.
+
+`mesh4s-graph4s` also exposes `MeshShortestPaths.create(topology)(edgeCosts)`.
+It accepts an exact edge-domain `Field` of finite nonnegative graph costs,
+without requiring an intrinsic triangle metric. It snapshots costs, preserves
+all cells/components, and delegates single-source search to graph4s.
+Source and result queries use the actual mesh vertex owner. `None` means no
+path; `Some(+Infinity)` means a reachable path whose cost overflows `Double`.
+All-zero costs are valid upstream; neuro-specific validation remains downstream.

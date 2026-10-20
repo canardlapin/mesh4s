@@ -13,7 +13,7 @@ val scalaCheckV = "1.19.0"
 lazy val locus4sRevision =
   "e32b0aeba5c4d19c457b2329272b95b26c061943"
 lazy val graph4sRevision =
-  "856e6fb770cf5f4c5512b0607d8c3733e75e7460"
+  "0e9133723a0d8751d5b0330a7eeedf76e8690c83"
 lazy val spatial4sRevision =
   "77037a7e6ced044b92d0a70b713c0a32a94f680d"
 
@@ -63,6 +63,8 @@ lazy val graph4sBuild =
     "https://github.com/canardlapin/graph4s.git",
     graph4sRevision
   )
+lazy val graph4sAlgorithmsJVM = ProjectRef(graph4sBuild, "algorithmsJVM")
+lazy val graph4sAlgorithmsJS = ProjectRef(graph4sBuild, "algorithmsJS")
 lazy val graph4sCoreJVM = ProjectRef(graph4sBuild, "coreJVM")
 lazy val graph4sCoreJS = ProjectRef(graph4sBuild, "coreJS")
 lazy val graph4sIndexedJVM = ProjectRef(graph4sBuild, "indexedJVM")
@@ -141,10 +143,10 @@ lazy val mesh4sGraph4s =
   meshProject("mesh4s-graph4s")
     .dependsOn(mesh4sCore, mesh4sGeometry)
     .jvmConfigure(
-      _.dependsOn(graph4sCoreJVM, graph4sIndexedJVM)
+      _.dependsOn(graph4sCoreJVM, graph4sIndexedJVM, graph4sAlgorithmsJVM)
     )
     .jsConfigure(
-      _.dependsOn(graph4sCoreJS, graph4sIndexedJS)
+      _.dependsOn(graph4sCoreJS, graph4sIndexedJS, graph4sAlgorithmsJS)
     )
 
 lazy val docs =
