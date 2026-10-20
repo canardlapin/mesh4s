@@ -18,9 +18,14 @@ enum MeshShortestPathsError:
 /** Exact vertex-domain lookup: None is disconnected; Some(+Infinity) is overflow. */
 final class MeshPathDistances[S] private[graph4s] (
     val vertices: FiniteDomain[S],
-    private val lookup: Index[S] => Option[Double]
+    private val lookup: Int => Double,
+    private val reachable: Int => Boolean
 ):
-  def distanceTo(vertex: Index[S]): Option[Double] = lookup(vertex)
+  def distanceTo(vertex: Index[S]): Option[Double] =
+    Option.when(reachable(vertex.ordinal))(lookup(vertex.ordinal))
+
+  /** Primitive read retaining the caller's explicit infinity convention. */
+  def distanceOrInfinity(vertex: Index[S]): Double = lookup(vertex.ordinal)
 
 /** Typed adapter only: graph4s owns the generic nonnegative shortest-path engine. These are
   * graph costs, not a certification of intrinsic triangle lengths.
@@ -38,7 +43,14 @@ final class MeshShortestPaths[T <: TriangleTopology] private[graph4s] (
     val distances = prepared.distancesFrom(projection.graphVertex(source))
     new MeshPathDistances(
       topology.vertices,
-      target => distances.distanceTo(projection.graphVertex(target))
+      ordinal =>
+        distances.distanceOrInfinity(
+          projection.graphVertex(topology.vertices.indexAtValidatedOrdinal(ordinal))
+        ),
+      ordinal =>
+        distances.isReachable(
+          projection.graphVertex(topology.vertices.indexAtValidatedOrdinal(ordinal))
+        )
     )
 
 object MeshShortestPaths:
