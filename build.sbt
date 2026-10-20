@@ -13,7 +13,7 @@ val scalaCheckV = "1.19.0"
 lazy val locus4sRevision =
   "e32b0aeba5c4d19c457b2329272b95b26c061943"
 lazy val graph4sRevision =
-  "6a72b58b564933234768f025e67228736ef2f7c5"
+  "856e6fb770cf5f4c5512b0607d8c3733e75e7460"
 lazy val spatial4sRevision =
   "77037a7e6ced044b92d0a70b713c0a32a94f680d"
 
