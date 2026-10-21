@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "source_revision": "fd8b93ea42879ec5414342a084f05b831a4bbfc7",
+  "change": "Only spatial4sRevision changes from 77037a7 to reviewed additive XYZ f796741; mesh algorithms unchanged.",
+  "geometry": {
+    "jvm_passed": 43,
+    "js_passed": 39,
+    "skipped": 0,
+    "failed": 0
+  },
+  "limits": "Standalone surface consumer under coherent published pins remains pending. Scale/allocation output is a local witness, not new broad performance qualification.",
+  "log": {
+    "path": "mesh4s-eco-u5-pin-01.log.gz",
+    "raw_sha256": "d6ac1f19f02e7f9a943689718fa8ba1e9738e8735d0604889f98eb7bb340cac2",
+    "metadata": {
+      "schema_version": 1,
+      "started_utc": "2026-10-21T17:43:35.952548+00:00",
+      "finished_utc": "2026-10-21T17:49:32.896298+00:00",
+      "duration_seconds": 356.943928,
+      "command": [
+        "env",
+        "JAVA_HOME=/Users/bbuchsbaum/Library/Java/JavaVirtualMachines/openjdk-22/Contents/Home",
+        "SBT_WARM_HEAP=2g",
+        "python3",
+        "/Users/bbuchsbaum/code/scala/scalafim-eco-mesh-kernels-20261020/tools/build/sbt-warm",
+        "mesh4s-geometryJVM/test",
+        "mesh4s-geometryJS/test"
+      ],
+      "cwd": "/Users/bbuchsbaum/code/scala/mesh4s-eco-u5-20261021",
+      "log": "/tmp/mesh4s-eco-u5-pin-01.log",
+      "exit_code": 0,
+      "child_returncode": 0,
+      "reason": "exited",
+      "detail": null,
+      "timeout_seconds": 1800.0,
+      "log_bytes": 11551
+    }
+  }
+}
