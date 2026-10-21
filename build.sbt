@@ -15,7 +15,7 @@ lazy val locus4sRevision =
 lazy val graph4sRevision =
   "613371f3bd0b12ce99352db0c637645eb62c6283"
 lazy val spatial4sRevision =
-  "77037a7e6ced044b92d0a70b713c0a32a94f680d"
+  "f79674114dc5f1f88866708b74f7ea42e59895a8"
 
 def sourceBuild(
     property: String,
