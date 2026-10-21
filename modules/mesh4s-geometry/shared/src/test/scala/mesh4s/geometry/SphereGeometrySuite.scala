@@ -48,7 +48,7 @@ class SphereGeometrySuite extends munit.FunSuite:
     assert(SphereGeometry.withRadius(zero, 100, 1.001).isLeft)
 
   test("angular distance uses endpoint normalization without spherical admission"):
-    val owner = ok(TriangleTopology.fromOrdinalFaces(4, Vector(Triangle(0, 1, 2))))
+    val owner = ok(TriangleTopology.fromOrdinalFaces(4, Vector(Triangle(0, 1, 2), Triangle(1, 3, 2))))
     val frame = ok(Frame.named[D3]("angular"))
     val points = ok(
       PointField.fromInterleavedDoubles(
