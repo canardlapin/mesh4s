@@ -123,6 +123,33 @@ class SphereGeometrySuite extends munit.FunSuite:
       1e-15
     )
 
+  test("angular distance preserves minimum-subnormal directions and matches unit geometry"):
+    val owner = ok(TriangleTopology.fromOrdinalFaces(3, Vector(Triangle(0, 1, 2))))
+    val frame = ok(Frame.named[D3]("minimum-subnormal-angular"))
+    val minimum = Double.MIN_VALUE
+    val subnormal = ok(
+      PointField.fromInterleavedDoubles(
+        owner.vertices,
+        frame,
+        Array(minimum, minimum, 0.0, minimum, 0.0, 0.0, 1.0, 0.0, 0.0)
+      )
+    )
+    val unit = ok(
+      PointField.fromInterleavedDoubles(
+        owner.vertices,
+        frame,
+        Array(1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+      )
+    )
+    val subnormalAngle = ok(
+      SphereGeometry.angularDistance(subnormal, subnormal.space.index(0).toOption.get, subnormal.space.index(1).toOption.get)
+    )
+    val unitAngle = ok(
+      SphereGeometry.angularDistance(unit, unit.space.index(0).toOption.get, unit.space.index(1).toOption.get)
+    )
+    assertEqualsDouble(subnormalAngle, math.Pi / 4.0, 1e-15)
+    assertEqualsDouble(subnormalAngle, unitAngle, 1e-15)
+
   test("angular distance requires an index owned by its point field at compile time"):
     val errors = compileErrors("""
       import mesh4s.*

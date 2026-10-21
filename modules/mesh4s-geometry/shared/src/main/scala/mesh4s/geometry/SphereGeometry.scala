@@ -40,17 +40,33 @@ object SphereGeometry:
       second: Index[S]
   ): Either[SphereGeometryError, Double] =
     for
-      firstRadius <- angularRadius(points, first.ordinal)
-      secondRadius <- angularRadius(points, second.ordinal)
+      _ <- angularRadius(points, first.ordinal)
+      _ <- angularRadius(points, second.ordinal)
     yield
       if first == second then 0.0
       else
         val firstOffset = first.ordinal * 3
         val secondOffset = second.ordinal * 3
+        val firstScale = math.max(
+          math.abs(points.packedValue(firstOffset)),
+          math.max(math.abs(points.packedValue(firstOffset + 1)), math.abs(points.packedValue(firstOffset + 2)))
+        )
+        val secondScale = math.max(
+          math.abs(points.packedValue(secondOffset)),
+          math.max(math.abs(points.packedValue(secondOffset + 1)), math.abs(points.packedValue(secondOffset + 2)))
+        )
+        val firstX = points.packedValue(firstOffset) / firstScale
+        val firstY = points.packedValue(firstOffset + 1) / firstScale
+        val firstZ = points.packedValue(firstOffset + 2) / firstScale
+        val secondX = points.packedValue(secondOffset) / secondScale
+        val secondY = points.packedValue(secondOffset + 1) / secondScale
+        val secondZ = points.packedValue(secondOffset + 2) / secondScale
+        val firstScaledNorm = math.hypot(math.hypot(firstX, firstY), firstZ)
+        val secondScaledNorm = math.hypot(math.hypot(secondX, secondY), secondZ)
         val dot =
-          (points.packedValue(firstOffset) / firstRadius) * (points.packedValue(secondOffset) / secondRadius) +
-            (points.packedValue(firstOffset + 1) / firstRadius) * (points.packedValue(secondOffset + 1) / secondRadius) +
-            (points.packedValue(firstOffset + 2) / firstRadius) * (points.packedValue(secondOffset + 2) / secondRadius)
+          (firstX / firstScaledNorm) * (secondX / secondScaledNorm) +
+            (firstY / firstScaledNorm) * (secondY / secondScaledNorm) +
+            (firstZ / firstScaledNorm) * (secondZ / secondScaledNorm)
         math.acos(math.max(-1.0, math.min(1.0, dot)))
 
   /** Strict legacy ratio: min radius * tolerance > max radius. */
