@@ -216,7 +216,7 @@ class SurfaceGeometrySuite extends munit.FunSuite:
       .create(0.0, 1e-14)
       .fold(error => fail(error), identity)
 
-  private def triangleTopology(face: Triangle = Triangle(0, 1, 2)): TriangleTopology =
+  private def triangleTopology(face: Triangle[Int] = Triangle(0, 1, 2)): TriangleTopology =
     TriangleTopology
       .fromOrdinalFaces(3, Vector(face))
       .fold(audit => fail(audit.message), identity)
@@ -236,7 +236,7 @@ class SurfaceGeometrySuite extends munit.FunSuite:
 
   private def realization3(
       coordinates: Array[Double],
-      face: Triangle = Triangle(0, 1, 2)
+      face: Triangle[Int] = Triangle(0, 1, 2)
   ): SurfaceRealization[? <: TriangleTopology, D3, Frame[D3]] =
     val topology = triangleTopology(face)
     val frame = right(Frame.named[D3]("three-space"))
