@@ -126,7 +126,7 @@ class SphereGeometrySuite extends munit.FunSuite:
   test("angular distance preserves minimum-subnormal directions and matches unit geometry"):
     val owner = ok(TriangleTopology.fromOrdinalFaces(3, Vector(Triangle(0, 1, 2))))
     val frame = ok(Frame.named[D3]("minimum-subnormal-angular"))
-    val minimum = Double.MIN_VALUE
+    val minimum = java.lang.Double.MIN_VALUE
     val subnormal = ok(
       PointField.fromInterleavedDoubles(
         owner.vertices,
