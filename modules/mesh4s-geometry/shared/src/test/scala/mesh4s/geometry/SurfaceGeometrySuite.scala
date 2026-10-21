@@ -58,6 +58,7 @@ class SurfaceGeometrySuite extends munit.FunSuite:
     assertClose(centroid.coordinate(1).get, 4.0 / 3.0)
     assertClose(SurfaceGeometry2.signedFaceArea(surface, face), 6.0)
     assertClose(surface.unsignedFaceArea(face), 6.0)
+    assertEquals(surface.unsignedFaceAreaChecked(face), Right(6.0))
     assertClose(surface.totalArea, 6.0)
     val bounds = surface.boundingBox.get
     assertEquals(bounds.minimum, Vector(0.0, 0.0))
@@ -169,6 +170,44 @@ class SurfaceGeometrySuite extends munit.FunSuite:
     assertClose(weights.third, 0.25)
     assertClose(weights.offPlaneResidual, 2.0)
 
+  test("D3 face area uses the cross product for thin, reversed, and collinear faces"):
+    val thin = realization3(Array(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1e-10, 0.0))
+    assertEqualsDouble(thin.unsignedFaceArea(index(thin.topology.faces, 0)), 5e-11, 1e-22)
+
+    val reversed = realization3(
+      Array(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1e-10, 0.0),
+      Triangle(0, 2, 1)
+    )
+    assertEqualsDouble(reversed.unsignedFaceArea(index(reversed.topology.faces, 0)), 5e-11, 1e-22)
+
+    val collinear = realization3(Array(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 2.0, 0.0, 0.0))
+    assertEqualsDouble(collinear.unsignedFaceArea(index(collinear.topology.faces, 0)), 0.0, 0.0)
+
+  test("checked D3 face area refuses non-finite differences and cross components"):
+    val difference = realization3(
+      Array(Double.MaxValue, 0.0, 0.0, -Double.MaxValue, 0.0, 0.0, 0.0, 1.0, 0.0)
+    )
+    assertEquals(
+      difference.unsignedFaceAreaChecked(index(difference.topology.faces, 0)),
+      Left(SurfaceRealizationError.NonFiniteDifference(0, 0))
+    )
+
+    val cross = realization3(
+      Array(0.0, 0.0, 0.0, Double.MaxValue, Double.MaxValue, 0.0, Double.MaxValue, Double.MaxValue, Double.MaxValue)
+    )
+    val crossFace = index(cross.topology.faces, 0)
+    assert(cross.unsignedFaceArea(crossFace).isNaN)
+    assertEquals(
+      cross.unsignedFaceAreaChecked(crossFace),
+      Left(SurfaceRealizationError.NonFiniteCross(0, 0))
+    )
+
+  test("checked D3 face area preserves finite cross components whose squared norm overflows"):
+    val surface = realization3(Array(0.0, 0.0, 0.0, 1e100, 0.0, 0.0, 0.0, 1e100, 0.0))
+    val face = index(surface.topology.faces, 0)
+    assertEquals(surface.unsignedFaceArea(face), Double.PositiveInfinity)
+    assertEquals(surface.unsignedFaceAreaChecked(face), Right(Double.PositiveInfinity))
+
   private val coordinates2 =
     Vector(0.0, 0.0, 3.0, 0.0, 0.0, 4.0)
 
@@ -177,9 +216,9 @@ class SurfaceGeometrySuite extends munit.FunSuite:
       .create(0.0, 1e-14)
       .fold(error => fail(error), identity)
 
-  private def triangleTopology(): TriangleTopology =
+  private def triangleTopology(face: Triangle = Triangle(0, 1, 2)): TriangleTopology =
     TriangleTopology
-      .fromOrdinalFaces(3, Vector(Triangle(0, 1, 2)))
+      .fromOrdinalFaces(3, Vector(face))
       .fold(audit => fail(audit.message), identity)
 
   private def realization2(
@@ -192,6 +231,20 @@ class SurfaceGeometrySuite extends munit.FunSuite:
         topology,
         frame,
         coordinates.toArray
+      )
+    )
+
+  private def realization3(
+      coordinates: Array[Double],
+      face: Triangle = Triangle(0, 1, 2)
+  ): SurfaceRealization[? <: TriangleTopology, D3, Frame[D3]] =
+    val topology = triangleTopology(face)
+    val frame = right(Frame.named[D3]("three-space"))
+    surfaceRight(
+      SurfaceRealization.fromInterleavedDoubles(
+        topology,
+        frame,
+        coordinates
       )
     )
 

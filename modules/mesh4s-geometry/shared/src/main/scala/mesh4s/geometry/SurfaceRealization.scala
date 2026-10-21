@@ -16,6 +16,8 @@ import spatial4s.Vec
 enum SurfaceRealizationError derives CanEqual:
   case WrongVertexDomain
   case Coordinates(error: PointFieldError)
+  case NonFiniteDifference(face: Int, axis: Int)
+  case NonFiniteCross(face: Int, axis: Int)
 
   def message: String =
     this match
@@ -23,6 +25,10 @@ enum SurfaceRealizationError derives CanEqual:
         "point field belongs to another topology owner"
       case Coordinates(error) =>
         error.message
+      case NonFiniteDifference(face, axis) =>
+        s"face $face has a non-finite coordinate difference at axis $axis"
+      case NonFiniteCross(face, axis) =>
+        s"face $face has a non-finite cross-product component at axis $axis"
 
 final case class AxisAlignedBoundingBox[
     D <: Dim,
@@ -156,12 +162,33 @@ final class SurfaceRealization[
     val vertices = topology.verticesOf(face)
     val first = difference(vertices.second, vertices.first)
     val second = difference(vertices.third, vertices.first)
-    val firstSquared = dot(first, first)
-    val secondSquared = dot(second, second)
-    val product = dot(first, second)
-    0.5 * math.sqrt(
-      math.max(0.0, firstSquared * secondSquared - product * product)
-    )
+    if dimension.rank == 3 then
+      val (x, y, z) = cross3(first, second)
+      math.sqrt((x * x + y * y) + z * z) / 2.0
+    else
+      val firstSquared = dot(first, first)
+      val secondSquared = dot(second, second)
+      val product = dot(first, second)
+      0.5 * math.sqrt(
+        math.max(0.0, firstSquared * secondSquared - product * product)
+      )
+
+  def unsignedFaceAreaChecked(
+      face: Index[topology.Face]
+  ): Either[SurfaceRealizationError, Double] =
+    if dimension.rank != 3 then Right(unsignedFaceArea(face))
+    else
+      val vertices = topology.verticesOf(face)
+      val first = difference(vertices.second, vertices.first)
+      val second = difference(vertices.third, vertices.first)
+      val faceOrdinal = face.ordinal
+      nonFiniteDifferenceAxis(first, second) match
+        case Some(axis) => Left(SurfaceRealizationError.NonFiniteDifference(faceOrdinal, axis))
+        case None =>
+          val (x, y, z) = cross3(first, second)
+          nonFiniteCrossAxis(x, y, z) match
+            case Some(axis) => Left(SurfaceRealizationError.NonFiniteCross(faceOrdinal, axis))
+            case None       => Right(math.sqrt((x * x + y * y) + z * z) / 2.0)
 
   def totalArea: Double =
     var result = 0.0
@@ -239,6 +266,25 @@ final class SurfaceRealization[
       result += first(axis) * second(axis)
       axis += 1
     result
+
+  private def cross3(first: Array[Double], second: Array[Double]): (Double, Double, Double) =
+    val x = first(1) * second(2) - first(2) * second(1)
+    val y = first(2) * second(0) - first(0) * second(2)
+    val z = first(0) * second(1) - first(1) * second(0)
+    (x, y, z)
+
+  private def nonFiniteDifferenceAxis(first: Array[Double], second: Array[Double]): Option[Int] =
+    var axis = 0
+    while axis < 3 do
+      if !first(axis).isFinite || !second(axis).isFinite then return Some(axis)
+      axis += 1
+    None
+
+  private def nonFiniteCrossAxis(x: Double, y: Double, z: Double): Option[Int] =
+    if !x.isFinite then Some(0)
+    else if !y.isFinite then Some(1)
+    else if !z.isFinite then Some(2)
+    else None
 
 object SurfaceRealization:
   def fromPointField[
